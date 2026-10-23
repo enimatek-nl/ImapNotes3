@@ -62,6 +62,16 @@ public class SettingsActivity extends AppCompatActivity {
         setResult(ListActivity.ResultCodeSuccess);
     }
 
+    @Override
+    public boolean onSupportNavigateUp() {
+        // Settings is only ever opened from the notes list, so going up just leaves this screen.  The
+        // default implementation would navigate to the parent named in the manifest, which starts the
+        // notes list over again instead of returning to the one that is already there.
+        Log.d(TAG, "onSupportNavigateUp");
+        finish();
+        return true;
+    }
+
 
     public static class SettingsFragment extends PreferenceFragmentCompat implements SimpleDialog.OnDialogResultListener {
         public static final String DLG_PREF_EDITOR_BG_COLOR = "EditorBgColorDefault";

@@ -32,6 +32,7 @@ import android.content.Intent;
 import android.content.SyncResult;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
 
@@ -45,6 +46,7 @@ import de.niendo.ImapNotes3.Data.OneNote;
 import de.niendo.ImapNotes3.Data.Security;
 import de.niendo.ImapNotes3.ImapNotes3;
 import de.niendo.ImapNotes3.ListActivity;
+import de.niendo.ImapNotes3.R;
 import de.niendo.ImapNotes3.Miscs.ImapNotesResult;
 import de.niendo.ImapNotes3.Miscs.Utilities;
 
@@ -56,8 +58,10 @@ import java.util.List;
 import java.util.Objects;
 
 import javax.mail.Flags;
+import javax.mail.IllegalWriteException;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import javax.mail.ReadOnlyFolderException;
 import javax.mail.internet.MimeMessage;
 
 /// A SyncAdapter provides methods to be called by the Android
@@ -72,6 +76,8 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
     private final Context applicationContext;
     private NotesDb storedNotes;
     private ImapNotesAccount account;
+    // Problem that should be shown to the user when this sync is reported as finished.
+    private String syncErrorMessage = "";
 
     private final SyncUtils syncUtils;
 
@@ -96,6 +102,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
         // TODO: should the account be static?  Should it be local?  If static then why do we not
         // provide it in the constructor?  What happens if we allow parallel syncs?
         account = new ImapNotesAccount(accountArg, applicationContext);
+        long syncStartTime = SystemClock.elapsedRealtime();
 
         //SyncUtils.CreateLocalDirectories(accountArg.name, applicationContext);
         account.CreateLocalDirectories();
@@ -103,7 +110,9 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
 
         // Connect to remote and get UIDValidity
         ImapNotesResult res = ConnectToRemote();
-        String errorMessage = "";
+        syncErrorMessage = "";
+        long stageTime = SystemClock.elapsedRealtime();
+        Log.d(TAG, "onPerformSync connect: " + (stageTime - syncStartTime) + " ms");
 
         if (res.returnCode == ImapNotesResult.ResultCodeImapFolderCreated) {
             SaveAllNotesToNew();
@@ -127,13 +136,12 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
                         account.GetRootDirAccount(),
                         applicationContext, storedNotes);
             } catch (MessagingException | IOException e) {
-                errorMessage = e.getLocalizedMessage();
-                Log.e(TAG, "onPerformSync Clear failed", e);
+                RememberError("onPerformSync Clear failed", e);
             }
             SyncUtils.SetUIDValidity(accountArg, res.UIDValidity, applicationContext);
             // Notify ListActivity that it's finished, and that it can refresh display
-            Log.d(TAG, "end on perform :" + errorMessage);
-            NotifySyncFinished(true, true, errorMessage);
+            Log.d(TAG, "end on perform :" + syncErrorMessage);
+            NotifySyncFinished(true, true, syncErrorMessage);
             return;
         }
 
@@ -142,9 +150,11 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
         // Send new local messages to remote, move them to local folder
         // and update uids in database
         boolean isChanged = handleNewNotes();
+        stageTime = StageTime("handleNewNotes", stageTime);
 
         // Delete on remote messages that are deleted locally (if necessary)
         if (handleDeletedNotes()) isChanged = true;
+        stageTime = StageTime("handleDeletedNotes", stageTime);
 
         // handle notes created or removed on remote
         boolean remoteNotesManaged = false;
@@ -152,37 +162,66 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
             remoteNotesManaged = syncUtils.handleRemoteNotes(account.GetRootDirAccount(),
                     storedNotes, accountArg.name);
         } catch (MessagingException | IOException e) {
-            errorMessage = e.getLocalizedMessage();
-            Log.e(TAG, "onPerformSync handleRemoteNotes failed", e);
+            RememberError("onPerformSync handleRemoteNotes failed", e);
         }
         if (remoteNotesManaged) isChanged = true;
+        stageTime = StageTime("handleRemoteNotes", stageTime);
 
         // Disconnect from remote
         syncUtils.DisconnectFromRemote();
         //Log.d(TAG, "Network synchronization complete of account: "+account.name);
         // Notify ListActivity that it's finished, and that it can refresh display
         boolean refreshTags = extras.getBoolean(ListActivity.REFRESH_TAGS);
-        if (refreshTags) {
+        if (refreshTags && !isChanged) {
+            // Nothing came from or went to the server, so no hashtag can have changed.  Scanning the
+            // body of every stored note again is by far the slowest part of a refresh that found
+            // nothing, so it is only done when this sync really changed a note.  Notes that were
+            // imported or saved have already got their tags updated while they were handled.
+            Log.d(TAG, "onPerformSync: nothing changed, all tags are still up to date");
+        } else if (refreshTags) {
             //Log.d(TAG, "refreshTags");
             File directory = ImapNotes3.GetAccountDir(account.accountName);
             File[] listOfFiles = directory.listFiles();
+            int numberOfFiles = 0;
             for (File file : Objects.requireNonNull(listOfFiles)) {
                 if (file.isFile()) {
                     String uid = Utilities.removeMailExt(file.getName());
                     Log.d(TAG, "FilterResults: " + file.getName());
                     List<String> tags = ListActivity.searchHTMLTags(directory, uid, Utilities.HASHTAG_PATTERN, true);
                     storedNotes.UpdateTags(tags, uid, account.accountName);
+                    numberOfFiles++;
                 }
             }
+            Log.d(TAG, "onPerformSync: tags of " + numberOfFiles + " notes updated");
         }
-        Log.d(TAG, "Finish network synchronization of account: " + accountArg.name + " Msg: " + errorMessage);
-        NotifySyncFinished(isChanged, true, errorMessage);
+        stageTime = StageTime("refreshTags", stageTime);
+        Log.d(TAG, "Finish network synchronization of account: " + accountArg.name + " Msg: " + syncErrorMessage);
+        NotifySyncFinished(isChanged, true, syncErrorMessage);
+        Log.d(TAG, "onPerformSync total: " + (SystemClock.elapsedRealtime() - syncStartTime) + " ms");
+    }
+
+    /**
+     * Reports how long one step of a synchronization took.  A refresh that seems to take forever is
+     * hard to fix without knowing which step is slow, so the numbers end up in the log.
+     *
+     * @param stage  Name of the step that just finished
+     * @param since  Value returned by this method when the step started
+     * @return The current time, to be passed to the next call
+     */
+    private static long StageTime(@NonNull String stage, long since) {
+        long now = SystemClock.elapsedRealtime();
+        Log.d(TAG, "onPerformSync " + stage + ": " + (now - since) + " ms");
+        return now;
     }
 
     private void NotifySyncFinished(boolean isChanged,
                                     boolean isSynced,
                                     String errorMessage) {
         Log.d(TAG, "NotifySyncFinished: " + isChanged + " " + isSynced);
+        if (syncUtils.RemoteFolderIsReadOnly() && errorMessage.isEmpty()) {
+            // Notes could be read, but changes can not be sent to the server: tell the user.
+            errorMessage = applicationContext.getString(R.string.sync_error_read_only_folder);
+        }
         if (ImapNotes3.intent == null) ImapNotes3.intent = new Intent(SyncService.SYNC_FINISHED);
         ImapNotes3.intent.putExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME, account.accountName);
         ImapNotes3.intent.putExtra(ListActivity.CHANGED, isChanged);
@@ -228,6 +267,21 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
         return res;
     }
 
+    /**
+     * Logs a problem and keeps the first one that the user should be told about.  JavaMail's own
+     * wording for a mailbox that can not be written to ("Cannot open in desired mode") is not very
+     * helpful, so it is replaced by an explanation.
+     */
+    private void RememberError(@NonNull String logMessage, @NonNull Exception e) {
+        Log.e(TAG, logMessage, e);
+        if (!syncErrorMessage.isEmpty()) return;
+        if ((e instanceof ReadOnlyFolderException) || (e instanceof IllegalWriteException)) {
+            syncErrorMessage = applicationContext.getString(R.string.sync_error_read_only_folder);
+        } else {
+            syncErrorMessage = e.getLocalizedMessage();
+        }
+    }
+
     private boolean handleNewNotes() {
         Log.d(TAG, "handleNewNotes");
         //Message message = null;
@@ -264,7 +318,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
             try {
                 uids = syncUtils.sendMessageToRemote(new MimeMessage[]{(MimeMessage) message});
             } catch (Exception e) {
-                Log.e(TAG, "handleNewNotes sendMessageToRemote Error: ", e);
+                RememberError("handleNewNotes sendMessageToRemote Error: ", e);
                 continue;
             }
             // Update uid in database entry
@@ -317,7 +371,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
             try {
                 syncUtils.DeleteNote(fileDeleted);
             } catch (Exception e) {
-                Log.e(TAG, "DeleteNote failed: ", e);
+                RememberError("DeleteNote failed: ", e);
             }
 
             // remove file from deleted

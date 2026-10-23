@@ -29,6 +29,9 @@
     <color name="transparent">#00000000</color>
     <color name="colorSurface">#AAAAAA</color>
 
+    <color name="ResultOkColor">#1B7F5C</color>
+    <color name="ResultFailedColor">#B3261E</color>
+
     <item name="ColorMode" translatable="false" type="string">light</item>>
 
 </resources>

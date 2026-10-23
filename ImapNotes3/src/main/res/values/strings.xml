@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">ImapNotes3</string>
+    <string name="account_overview">Accounts</string>
+    <string name="accounts_empty">No accounts yet</string>
     <string name="new_account">New Account</string>
     <string name="new_note">New Note</string>
     <string name="refresh">Refresh</string>
@@ -11,6 +13,10 @@
     <string name="remove">Remove</string>
     <string name="save">Save</string>
     <string name="check_and_create_account">Check &amp; Create Account</string>
+    <string name="next">Next</string>
+    <string name="finished">Finished</string>
+    <string name="i_understand">I understand</string>
+    <string name="sync_error_read_only_folder">The notes folder on the server is read-only: notes are downloaded, but changes cannot be uploaded.</string>
     <string name="logging_in">Logging into your account…</string>
     <string name="account_already_exists_or_is_null">This Android account/notebook for Imapnotes3 already exists or is invalid</string>
     <string name="account_added">Account has been added</string>

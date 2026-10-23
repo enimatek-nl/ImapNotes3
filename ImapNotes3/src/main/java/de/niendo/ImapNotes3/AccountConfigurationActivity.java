@@ -26,8 +26,10 @@ import android.accounts.AccountAuthenticatorActivity;
 import android.accounts.AccountManager;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.LayoutRes;
@@ -36,7 +38,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.NavUtils;
 
 import android.util.Log;
 import android.view.Menu;
@@ -45,13 +46,18 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -128,6 +134,22 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
     @Nullable
     private String accountname;
 
+    // The setup screen has two pages: the form and the result of the connection check.
+    private View formScrollView;
+    private View resultLayout;
+    private View resultSpinner;
+    private ImageView resultIcon;
+    private TextView resultHeading;
+    private TextView resultMessage;
+    private Button resultButton;
+    private Button resultHelpButton;
+    private boolean resultIsSuccess = false;
+    // Predictive back: on API 33+ onBackPressed() is not called any more (the manifest enables
+    // android:enableOnBackInvokedCallback), so the failed-check page registers a platform back
+    // callback instead. Typed as Object to keep the class loadable on the older APIs we support.
+    @Nullable
+    private Object backToFormCallback = null;
+
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
@@ -156,35 +178,10 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
             Intent intent = new Intent();
             intent.putExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME, GetTextViewText(accountnameTextView));
             setResult(ListActivity.ResultCodeSuccess, intent);
-            Clear();
-            finish();
-        } else {
-            setResult(ListActivity.ResultCodeError);
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.IMAP_operation_failed)
-                    .setIcon(android.R.drawable.ic_dialog_alert)
-                    .setMessage(result.result)
-                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                        // Do nothing
-                    })
-                    .setNeutralButton(R.string.help, (dialog, which) -> {
-                        new AlertDialog.Builder(this)
-                                .setTitle(R.string.help)
-                                .setIcon(android.R.drawable.ic_dialog_info)
-                                .setMessage(R.string.imap_help_text)
-                                .setPositiveButton(android.R.string.ok, (dialog1, which1) -> {
-                                }).show();
-                    })
-                    .show();
-            /*
-            SimpleDialog.build()
-                    .title("R.string.hello")
-                    .msg("R.string.hello_world")
-                    .show(ListActivity);
-
-             */
         }
-
+        // A failed check deliberately keeps the ResultCodeNeutral that onCreate() set, so leaving
+        // the screen with Back behaves like a cancel.
+        ShowResultPage(result.succeeded, result.result);
     }
 
     public void setSupportActionBar(@Nullable Toolbar toolbar) {
@@ -237,6 +234,7 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
 
     @Override
     protected void onDestroy() {
+        DisableBackToForm();
         super.onDestroy();
         getDelegate().onDestroy();
     }
@@ -343,6 +341,15 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         expandMoreSettings = findViewById(R.id.BtnExpandAccountSettings);
         expandMoreSettings.setOnClickListener(ClickExpandMoreSettings);
 
+        formScrollView = findViewById(R.id.scrollView);
+        resultLayout = findViewById(R.id.accountResult);
+        resultSpinner = findViewById(R.id.resultSpinner);
+        resultIcon = findViewById(R.id.resultIcon);
+        resultHeading = findViewById(R.id.resultHeading);
+        resultMessage = findViewById(R.id.resultMessage);
+        resultButton = findViewById(R.id.resultButton);
+        resultHelpButton = findViewById(R.id.resultHelpButton);
+
         Bundle extras = getIntent().getExtras();
         // TODO: find out if extras can be null.
         if (extras != null) {
@@ -404,14 +411,13 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
             buttonSave.setOnClickListener(clickListenerSave);
             layout.addView(buttonSave);
         } else {
-            Button buttonAbort = new Button(this);
-            buttonAbort.setText(R.string.cancel);
-            Log.d(TAG, "Set onclick listener abort");
-            buttonAbort.setOnClickListener(clickListenerAbort);
-            layout.addView(buttonAbort);
-            // Here we have to create a new account
+            // Here we have to create a new account. There is no cancel button, Back or Up
+            // returns to the caller.
             Button buttonView = new Button(this);
-            buttonView.setText(R.string.check_and_create_account);
+            buttonView.setText(R.string.next);
+            buttonView.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
             Log.d(TAG, "Set onclick listener login");
             buttonView.setOnClickListener(clickListenerLogin);
             layout.addView(buttonView);
@@ -471,6 +477,7 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         // to add a zero at the beginning so that we are guaranteed to be able to parse it but that
         // leaves us with a zero sync. interval.
 
+        ShowCheckingPage();
         new LoginThread(
                 ImapNotesAccount,
                 this,
@@ -483,7 +490,9 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
 
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            NavUtils.navigateUpFromSameTask(this);
+            // This activity is started for a result, so Up has to return to whoever opened it
+            // (the account overview or the notes list).
+            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -518,6 +527,123 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         folderTextView.setText("");
         copyImapFolderNameTextView.setText("");
         copyImapFolderCheckBox.setChecked(false);
+    }
+
+    /**
+     * Switches to the second page of the setup screen while the IMAP connection check runs.
+     */
+    private void ShowCheckingPage() {
+        HideKeyboard();
+        resultIsSuccess = false;
+        resultSpinner.setVisibility(View.VISIBLE);
+        resultIcon.setVisibility(View.GONE);
+        resultMessage.setVisibility(View.GONE);
+        resultButton.setVisibility(View.GONE);
+        resultHelpButton.setVisibility(View.GONE);
+        resultHeading.setText(R.string.logging_in);
+        ShowResultPageLayout();
+    }
+
+    /**
+     * Shows the outcome of the connection check: either finished, or the reason it failed with a
+     * way back to the form.
+     */
+    private void ShowResultPage(boolean succeeded, @NonNull String message) {
+        HideKeyboard();
+        resultIsSuccess = succeeded;
+        resultSpinner.setVisibility(View.GONE);
+        resultIcon.setVisibility(View.VISIBLE);
+        resultMessage.setVisibility(View.VISIBLE);
+        resultButton.setVisibility(View.VISIBLE);
+
+        if (succeeded) {
+            resultIcon.setImageResource(R.drawable.ic_action_check_circle);
+            // message already holds the localized "account added/modified" text from LoginThread.
+            resultHeading.setText(message);
+            resultMessage.setText(GetTextViewText(accountnameTextView));
+            resultHelpButton.setVisibility(View.GONE);
+            resultButton.setText(R.string.finished);
+            resultButton.setOnClickListener(v -> {
+                Clear();
+                finish();
+            });
+        } else {
+            resultIcon.setImageResource(R.drawable.ic_action_error);
+            resultHeading.setText(R.string.IMAP_operation_failed);
+            resultMessage.setText(message);
+            resultHelpButton.setVisibility(View.VISIBLE);
+            resultHelpButton.setOnClickListener(v -> ShowImapHelpDialog());
+            resultButton.setText(R.string.i_understand);
+            resultButton.setOnClickListener(v -> ShowFormPage());
+            EnableBackToForm();
+        }
+        ShowResultPageLayout();
+    }
+
+    private void ShowResultPageLayout() {
+        formScrollView.setVisibility(View.GONE);
+        resultLayout.setVisibility(View.VISIBLE);
+    }
+
+    private void ShowFormPage() {
+        DisableBackToForm();
+        resultLayout.setVisibility(View.GONE);
+        formScrollView.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * Lets Back return to the form instead of leaving the setup screen. Only needed while the
+     * result of a failed connection check is displayed.
+     */
+    private void EnableBackToForm() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // Older versions still deliver Back through onBackPressed().
+            return;
+        }
+        if (backToFormCallback == null) {
+            backToFormCallback = (OnBackInvokedCallback) this::ShowFormPage;
+        }
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, (OnBackInvokedCallback) backToFormCallback);
+    }
+
+    private void DisableBackToForm() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || backToFormCallback == null) {
+            return;
+        }
+        getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((OnBackInvokedCallback) backToFormCallback);
+    }
+
+    private void ShowImapHelpDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.help)
+                .setIcon(android.R.drawable.ic_dialog_info)
+                .setMessage(R.string.imap_help_text)
+                .setPositiveButton(R.string.ok, (dialog, which) -> {
+                })
+                .show();
+    }
+
+    private void HideKeyboard() {
+        View focusedView = getCurrentFocus();
+        if (focusedView == null) {
+            return;
+        }
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(focusedView.getWindowToken(), 0);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public void onBackPressed() {
+        if (resultLayout.getVisibility() == View.VISIBLE && !resultIsSuccess) {
+            // After a failed check, Back returns to the form so the entries can be corrected.
+            ShowFormPage();
+            return;
+        }
+        super.onBackPressed();
     }
 
 

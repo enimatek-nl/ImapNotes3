@@ -30,5 +30,8 @@
     <color name="transparent">#00000000</color>
     <color name="colorSurface">#3C3C3A</color>
 
+    <color name="ResultOkColor">#6DD58C</color>
+    <color name="ResultFailedColor">#FFB4AB</color>
+
     <item name="ColorMode" translatable="false" type="string">dark</item>>
 </resources>
