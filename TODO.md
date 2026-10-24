@@ -1,891 +1,306 @@
-# TODO.md — ImapNotes3 iOS Notes-style navigation plan
+# TODO.md — ImapNotes3 code-quality backlog
 
-Goal: make the app feel closer to Apple Notes:
+Result of a dead-code / boy-scout scan on 2026-10-24, after the account-first navigation rewrite
+(`v1.4-07` / `10407`). Every "unused" verdict was checked against real call sites, and every line
+reference was re-verified against the current files.
 
-1. Start screen shows the configured IMAP accounts.
-2. If there are no accounts, show a prominent add-account action.
-3. Tapping an account opens that account’s notes list.
-4. The last opened account becomes the app’s normal landing screen on later launches.
-5. In the notes list, tapping a note opens the editor.
-6. Swiping a note row reveals row actions, starting with delete.
+**Work top to bottom.** §1 is deletion with no behaviour change. §2 are small real fixes.
+§3 is lint configuration — worth doing early, because it turns the numbers in _Baseline_ into a
+regression detector for all later work. §4 is deliberately deferred.
 
-This document is intentionally phased. Each phase can be implemented and tested independently.
+## Baseline (measure before and after)
 
----
+```sh
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+./gradlew lintDebug
+# report: ImapNotes3/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+./gradlew assembleDebug
+```
 
-## Current app behavior
+Current: **193 errors / 138 warnings.** 190 of the errors are `MissingTranslation` (base-English
+strings Weblate has not translated yet — expected noise here). The remaining **3 errors are
+`UseAppTint`, fixed by §2.3**, so after §1 + §2.3 the expectation is _exactly_ 190 errors and zero
+real errors.
 
-Relevant current entry points:
-
-- `src/main/AndroidManifest.xml`
-    - `ListActivity` is currently the launcher activity.
-    - `ListActivity` also handles `ACTION_SEND` / `ACTION_SEND_MULTIPLE` share intents.
-- `src/main/java/de/niendo/ImapNotes3/ListActivity.java`
-    - Shows a top account spinner.
-    - Shows notes for the selected account, with an “All accounts” option.
-    - Opens `AccountConfigurationActivity` automatically when no account exists.
-    - Uses `AccountManager` to list accounts of type `de.niendo.ImapNotes3`.
-- `src/main/res/layout/main.xml`
-    - Top account spinner + edit account button.
-    - `ListView` for notes.
-    - Floating add-note button.
-- `src/main/res/layout/note_element.xml`
-    - Current note row: title and date.
-- `src/main/java/de/niendo/ImapNotes3/AccountConfigurationActivity.java`
-    - Existing add/edit IMAP account screen.
-- `src/main/java/de/niendo/ImapNotes3/NotesListAdapter.java`
-    - Custom `BaseAdapter` used by `ListActivity`.
+`lintDebug` fails the task on findings by design — a non-zero exit is not a broken build. Read the
+report file, not the exit code, until §3.1 lands.
 
 ---
 
-## Design decisions
+## 1. Dead code and dead resources — safe to delete
 
-Keep these decisions unless explicitly revisited:
+Each item is self-contained and independently committable.
 
-- Keep Java only for now, matching the existing codebase.
-- Reuse `AccountConfigurationActivity` for add/edit account.
-- Do not hand-edit translation files under `values-*/strings.xml`. Add new English strings only in `src/main/res/values/strings.xml`.
-- Do not change existing string keys unless unavoidable, because Weblate translations depend on them.
-- Prefer incremental UI refactoring over replacing the whole list immediately.
-- Preserve existing IMAP sync, `.eml` file storage, and `UpdateThread` delete/save behavior.
-- Use PascalCase for new Java methods/classes, matching existing project style.
-- Add new Java files with the standard GPLv3 header used by existing sources.
+### 1.1 Whole dead class
 
----
+- [ ] `Sync/Security.java` — 53-line enum, **zero references**. Both users in that package import
+      the live one: `Sync/SyncUtils.java:39` and `Sync/SyncAdapter.java:46` import
+      `de.niendo.ImapNotes3.Data.Security`. Delete the file.
 
-## Phase 1 — Add an account overview screen
+### 1.2 Dead methods and fields
 
-This is the new start screen.
+- [ ] `Sync/SyncUtils.java:658-669` — `finalize()` override whose whole body is commented out
+      (`store.close()`). Deprecated since Java 9, and `SyncAdapter` closes its stores explicitly.
+- [ ] `Miscs/UpdateThread.java:315` — private `MakeMessageWithAttachment()`, never called; the
+      attachment feature never landed (`Data/Attachment.java` was removed earlier).
+- [ ] `Data/ImapNotesAccount.java` — 14 stale accessors. The setup screen reads and writes userdata
+      through `ConfigurationFieldNames` directly, which is why these went dead:
+      `GetAccountName:142`, `GetUsername:167`, `SetUsername:171`, `GetPassword:177`,
+      `SetPassword:181`, `GetServer:187`, `SetServer:191`, `GetPortnum:196`, `SetPortnum:200`,
+      `GetSecurity:206`, `GetUsesticky:220`, `SetaccountHasNotChanged:237`,
+      `GetaccountHasChanged:244`, `SetFolderName:264` (private).
+      Keep the `SyncInterval` and `CopyFrom*` accessors — those **are** used.
+- [ ] `Data/OneNote.java:103` `SetBGColor()` and `:112` `GetSnippet()`. The list adapter works with
+      the `SNIPPET` map key and its own private `GetSnippetOfNote` (`NotesListAdapter.java:261`),
+      and calls `SetSnippet` at `:486`. So `SetSnippet` stays.
+- [ ] `Miscs/SwipeRevealRow.java:142` `isRevealed()` — the list tracks reveal state through the
+      static `revealedRow` reference (`:64`) instead.
+- [ ] `Miscs/NDSpinner.java:68` `isDropDownMenuShown()` and `:72` `setDropDownMenuShown()` — the
+      public field at `:34` is written internally at `:64` and never read outside the class.
+- [ ] `Miscs/SyncThread.java` — the `@StringRes int resId` field (`:44-45`), the constructor
+      parameter (`:66`) and the assignment (`:75`) are never read; the only consumer is the
+      commented-out `Notifier.Show(resId, …)` at `:79`. Drop field + parameter and update the call
+      sites in `ListActivity` / `AccountListActivity`, then delete the now-false
+      `// TODO: remove unused arguments.` at `:62`.
+      Also remove the inspection leftovers in the same file: `:37-41`
+      (`// --Commented out by Inspection …` + `ImapNotesResult res`), `:54` and `:82`
+      (commented `applicationContextRef`), `:38` `bool_to_return`.
+      Leave `:57` (`NoteDb should probably never be null`) — that one is a real note.
 
-**Status:** implemented for manual testing from the notes-list overflow menu. The app does not start
-on this screen yet; that belongs to Phase 2.
+### 1.3 Dead resources
 
-### Deliverable
+- [ ] `res/values/arrays.xml` — delete the whole file: `reply_entries` (`:3`) and `reply_values`
+      (`:8`) are `SettingsActivity` template leftovers, zero references.
+- [ ] `res/drawable/ic_action_add_user.xml` — orphaned when the account row/FAB became
+      `ic_action_account_add`.
+- [ ] `res/values/colors.xml:27` `ShareActionActionColor` and `:29` `transparent` — genuinely
+      unused (contrast with §3.3, where the _note_ colours only look unused).
+- [ ] `res/xml/searchable.xml` **plus** the manifest meta-data block
+      (`AndroidManifest.xml:88-91` — note the manifest's own comment: _"What is this meta-data for?
+      There doesn't seem to be any code that uses it"_). The `SearchView` is configured in code
+      (`ListActivity.configureSearchView`), and `ListActivity.java:530-537` deliberately comments
+      out `setSearchableInfo(...)`; the `ACTION_SEARCH` intent filter was dropped in the rewrite.
+      Delete the xml, the meta-data block, and the commented `SearchManager` lines at `:531-537`.
 
-A new screen that lists configured ImapNotes3 accounts.
+### 1.4 Stale comments (fix or delete while you are in the file)
 
-### Steps
-
-- [x] Create `AccountListActivity.java`.
-- [x] Create `src/main/res/layout/account_list.xml`.
-- [x] Create `src/main/res/layout/account_element.xml` for one account row.
-- [x] Add UI elements:
-    - [x] `RecyclerView` or `ListView` for accounts.
-    - [x] Empty-state text such as “No accounts yet”.
-    - [x] Add-account button, preferably a `FloatingActionButton` with `+`.
-- [x] Query accounts through `AccountManager`.
-- [x] Filter accounts to `Utilities.PackageName`, similar to the current `AccountsUpdateListener` logic in `ListActivity.java`.
-- [x] For each account row show at least:
-    - [x] Account display name.
-    - [x] IMAP server as secondary text.
-    - [x] Optional: username or sync interval later.
-- [x] Add account list item click behavior:
-    - [x] Open `ListActivity`.
-    - [x] Pass the tapped account name as an intent extra, for example `ListActivity.EDIT_ITEM_ACCOUNTNAME`.
-- [x] Add account row action affordance:
-    - [x] Tap on row opens account notes.
-    - [x] Optional long-press or overflow button opens `AccountConfigurationActivity` with `Actions.EDIT_ACCOUNT`.
-- [x] Add “add first account” behavior:
-    - [x] If `AccountManager` returns zero ImapNotes3 accounts, hide the list and show empty state + `+`.
-    - [x] `+` starts `AccountConfigurationActivity` with `Actions.CREATE_ACCOUNT`.
-- [x] Make account list refresh when accounts change.
-- [x] Move account-add logic out of `ListActivity.noAccountExists()` once `AccountListActivity` is the launcher.
-    - Done in Phase 2. `noAccountExists()` now returns to the account overview, except for share intents.
-
-### Acceptance criteria
-
-- [x] App starts at the account overview.
-- [x] With no accounts, the screen clearly shows an add-account button.
-- [x] With one or more accounts, each account is tappable.
-- [x] Tapping an account opens the notes list for that account.
-
----
-
-## Phase 2 — Make the account overview the launcher
-
-### Deliverable
-
-The new account overview becomes the normal app start screen.
-
-**Status:** implemented and installed. Verified on the emulator: the launcher resolves to
-`AccountListActivity`, the app icon label stays “ImapNotes3”, the empty state shows “No accounts yet”,
-the `+` button opens account setup, and Up from account setup returns to the overview.
-
-### Steps
-
-- [x] Add `AccountListActivity` to `AndroidManifest.xml`.
-    - Added in Phase 1, then made exported and launcher-capable in Phase 2.
-- [x] Move the `MAIN` / `LAUNCHER` intent filter from `ListActivity` to `AccountListActivity`.
-- [x] Keep `ListActivity` declared and exported as needed for internal navigation.
-- [x] Keep share-intent filters working during migration:
-    - [x] Option A: temporarily keep `ACTION_SEND` / `ACTION_SEND_MULTIPLE` / `ACTION_SEARCH` filters on `ListActivity`.
-    - [ ] Option B: move share intents to `AccountListActivity` and then forward them to `ListActivity`.
-    - Option A chosen for now; the manifest has a comment marking this as temporary.
-- [x] Keep `AccountConfigurationActivity` parent activity as `AccountListActivity` instead of `ListActivity`.
-- [x] Keep `NoteDetailActivity` parent as `ListActivity`.
-- [x] Remove or disable automatic account-setup launch from `ListActivity` once `AccountListActivity` owns empty-state handling.
-    - `noAccountExists()` now calls `finish()` back to the overview, but still opens account setup when
-      `ListActivity` was started by a share intent, so shared content is not lost.
-- [x] Ensure back button flow is coherent:
-    - [x] Notes list → back → account overview.
-        - Also set `android:parentActivityName=".AccountListActivity"` on `ListActivity`.
-    - [x] Edit account → back → account overview or notes list depending where it was opened.
-        - `android.R.id.home` in `AccountConfigurationActivity` now calls `finish()` instead of
-          `NavUtils.navigateUpFromSameTask()`, so Up returns to whoever opened it.
-    - [x] Add account from empty overview → after success → return to the account overview with the
-          new account listed (superseded by Phase 2b; it used to open the new account's notes list).
-    - [x] `AccountListActivity` is `singleTop` and both navigation directions use
-          `FLAG_ACTIVITY_CLEAR_TOP | FLAG_ACTIVITY_SINGLE_TOP`, so the overview/notes pair does not stack up.
-
-### Acceptance criteria
-
-- [x] Installing and starting the app lands on the account overview when there is no saved last account.
-- [x] First launch with no account goes to account overview, not directly to account setup.
-- [x] Existing account creation flow still completes successfully.
-    - Verified on the emulator against a throwaway local IMAP listener (`10.0.2.2:1143`): account was
-      created, listed on the overview, opened its notes list, and was removed again. No changes to the
-      IMAP/sync code were needed.
+- [ ] `// TODO Auto-generated constructor stub` / `… method stub` that describe nothing:
+      `Miscs/EditorMenuAdapter.java:53, 59, 66, 72`, `AccountConfigurationActivity.java:479`.
+- [ ] `ImapNotes3.java:88` `//FIXME - do something usefull` — resolve together with §2.1.
+- [ ] `AccountConfigurationActivity.java:332` `// TODO: find out if extras can be null.` —
+      either assert it or explain why it cannot happen.
+- [ ] `Sync/SyncUtils.java:661-668` and `ListActivity.java:530-537` — commented-out code that will
+      disappear with §1.2 and §1.3.
 
 ---
 
-## Phase 2b — Account setup result flow
+## 2. Small real fixes (behaviour, correctness, leaks)
 
-### Deliverable
+### 2.1 The uncaught-exception handler swallows the crash it records
 
-Account setup becomes a two-page flow: the form, then the outcome of the connection check.
+- [ ] `ImapNotes3.java:87-97`: `System.exit(2)` at `:93` runs **before**
+      `defaultUEH.uncaughtException(thread, e)` at `:96`, so the re-throw is unreachable and the
+      default handler never runs (no logcat stacktrace, no DropBox entry, no crash dialog). The
+      surrounding comments already doubt `System.exit()` is right, and a
+      `finishAndRemoveTask()` variant sits commented out. Decide one behaviour and make the code
+      match the comment — probably: store the stacktrace, then call the default handler and let the
+      system kill the process.
 
-**Status:** implemented and verified on the emulator (form has no Cancel, button is “Next”, failed check
-shows the reason with “Help” / “I understand”, Back from a failed check returns to the form, and a
-successful check shows “Account has been added” with “Finished” landing on the account overview that
-lists the new account).
+### 2.2 `ListActivity`: listener never unregistered, and destructive work in a UI callback
 
-### Steps
+- [ ] `ListActivity.java:263` registers `AccountsUpdateListener` (inner class at `:920`), but
+      `onDestroy` (`:147-151`) only unregisters the `ContentObserver` (`:149`) — the listener
+      outlives the activity.
+      Worse, `onAccountsUpdated` performs filesystem cleanup:
+      `FileUtils.deleteDirectory(ImapNotes3.GetAccountDir(s))` at `:947`. That removal is now owned
+      by `SyncUtils.RemoveAccount`, reached through
+      `ImapNotesAuthenticatorService.Authenticator.getAccountRemovalAllowed` (see `AGENTS.md`), and
+      doing it from a UI callback duplicates it — a leftover from before account deletion moved.
+      `AccountListActivity` does this correctly: `addOnAccountsUpdatedListener` in `onStart:137`,
+      `removeOnAccountsUpdatedListener` in `onStop:145`.
+      **Delete the listener from `ListActivity`** (and the `import android.accounts.OnAccountsUpdateListener:30`),
+      then re-check the refresh path around `:789`, whose comment still refers to it.
 
-- [x] Rework `src/main/res/layout/account_setup.xml` into two pages inside one activity:
-    - [x] Keep the existing form in a `ScrollView` (`@+id/scrollView`) with all current field ids intact.
-    - [x] Add `@+id/accountResult` result page: `resultSpinner`, `resultIcon`, `resultHeading`,
-          `resultMessage`, `resultButton`, `resultHelpButton`.
-- [x] In `AccountConfigurationActivity`, drop the Cancel button for the create path and label the single
-      button `@string/next` (“Next”). Up/Back already leaves the screen, so Cancel is redundant.
-      The edit path keeps Cancel / Delete / Save.
-- [x] Keep check and create as one network step (`LoginThread` still does connect + `addAccountExplicitly`);
-      “Next” starts it and the second page displays the outcome.
-- [x] `DoLogin()` switches to the checking page (spinner + `@string/logging_in`) before starting the thread.
-- [x] On success: check icon, localized “Account has been added” heading, account name, `@string/finished`
-      button that clears the form and finishes.
-- [x] On failure: error icon, `@string/IMAP_operation_failed` heading, the error reason, `@string/help`
-      opening the existing IMAP help dialog, and `@string/i_understand` returning to the form with all
-      entries intact.
-- [x] Do not set `ResultCodeError` on failure; the activity keeps the `ResultCodeNeutral` from `onCreate`,
-      so leaving with Back behaves like a cancel (no caller treats Error specially).
-- [x] Back from the failed-check page returns to the form instead of leaving setup. Because the manifest
-      sets `android:enableOnBackInvokedCallback="true"`, `onBackPressed()` is not called on Android 16, so
-      the failure page registers a platform `OnBackInvokedCallback` (API 33+) and the `onBackPressed()`
-      override keeps older releases covered.
-- [x] `AccountListActivity.onActivityResult` no longer auto-opens the notes list after `ADD_ACCOUNT` +
-      success; it only reloads the account list, so “Finished” lands on the overview with the new account.
-- [x] New strings added in base English only: `next`, `finished`, `i_understand`. `check_and_create_account`
-      is left in place (unused) to avoid Weblate churn.
-- [x] New colors for the status icon in `values/colors.xml` and `values-night/colors-night.xml`
-      (`ResultOkColor`, `ResultFailedColor`); the existing `green`/`red` note-background colors invert in
-      dark mode and must not be used for status.
-- [x] New drawables `ic_action_check_circle` and `ic_action_error`.
-- [x] Crash fix found while verifying the success path: `ListActivity.Check_Action_Send()` assumed a
-      non-null intent action and threw `NullPointerException` when `ListActivity` was started from an
-      account row (explicit intent, no action). Comparisons are now null-safe.
+### 2.3 The only 3 real lint errors: `android:tint` → `app:tint`
 
-### Acceptance criteria
+- [ ] `res/layout/account_element.xml:25`, `res/layout/account_element.xml:35`,
+      `res/layout/note_element.xml:30` (`UseAppTint` from androidx.appcompat).
 
-- [x] “Next” with a bad server shows the reason, “Help” and “I understand”; “I understand” and Back both
-      return to the form with the entered values intact.
-- [x] “Next” with a reachable server shows the finished page; “Finished” returns to the account overview,
-      which lists the new account.
+### 2.4 Back navigation: platform callback mixed with a deprecated override
 
----
+- [ ] `AccountConfigurationActivity.java` registers a platform
+      `android.window.OnBackInvokedCallback` (`:568-571`, unregister `:578`, API 33 guarded, see the
+      explanation comment at `:135-136`) **and** still overrides the deprecated `onBackPressed()`
+      at `:604-610` (lint `GestureBackNavigation`). `NoteDetailActivity.java:147` already uses the
+      androidx `OnBackPressedDispatcher.addCallback`, which works on all API levels — switch to it
+      and drop both the platform dispatcher code and the override.
 
-## Phase 2c — Editing an account uses the same flow as adding
+### 2.5 Menus: hardcoded titles and inconsistent search widget
 
-### Deliverable
+- [ ] `res/menu/detail.xml:9` `"Search"`, `:19` `"Next Item"`, `:27` `"Previous Item"`
+      (`HardcodedText`). `@string/search` exists (`res/values/strings.xml:10`); there are **no**
+      next/previous keys in any locale, so add two base-English keys (Weblate fills the rest) —
+      `detail.xml` also reuses `@string/save:34`, `@string/delete:40`, `@string/share:46`.
+- [ ] Search widget class differs between menus: `menu/list.xml:16` uses
+      `android.widget.SearchView`, `menu/detail.xml:10` uses
+      `androidx.appcompat.widget.SearchView`. Unify on appcompat (the class
+      `ListActivity.configureSearchView` imports).
+- [ ] `res/menu/detail.xml:11` — `app:showAsAction="always"` (`AlwaysShowAction`); three permanently
+      shown items overflow on narrow screens. Review whether prev/next belong in the overflow.
 
-Editing an account shows the same form as adding one (server settings are editable) and ends with the
-same check + result page: “Finished” back to the overview when the connection still works, “I understand”
-back to the form when it does not. The Delete button disappears from this screen (it moves to the account
-overview — see Phase 5b).
+### 2.6 A bare `%` in two base strings produces 6 format warnings
 
-**Status:** implemented and verified on the emulator: editing an account (still long-press on an account
-row for now) opens the same form with only “Next”, the check runs against the entered settings, success
-shows “Account has been modified” + “Finished” landing back on the overview, a failed check shows the
-reason with “Help” / “I understand”, Back from it returns to the form with the edits intact, and the old
-account settings stay untouched on disk after a failed check.
+- [ ] `res/values/strings.xml:125-126` — `link_image_width` / `link_image_height` are
+      `"Width (% or px)"` / `"Height (% or px)"`. Translations that escape the percent signs are
+      counted as format strings with a different argument count, producing `StringFormatCount`
+      warnings at `values-ru/strings.xml:105,106`, `values-cs/strings.xml:115,132`,
+      `values-zh-rCN/strings.xml:117,118`. Both are **only ever used as EditText hints**
+      (`NoteDetailActivity.java:511, 515, 1011, 1015`), never formatted — add `formatted="false"`
+      in base English and all 6 warnings disappear without touching any translation.
 
-### Steps
+### 2.7 Context leaks (`StaticFieldLeak` × 3)
 
-- [x] In `AccountConfigurationActivity`, drop the programmatic button trio for the edit path (currently
-      built in the `EDIT_ACCOUNT` branch of the layout setup: Cancel → `clickListenerAbort`, Delete →
-      `clickListenerRemove`, Save → `clickListenerSave`) and use the same single `@string/next` button +
-      `clickListenerLogin` the create path already builds. The three now-unused listeners
-      (`clickListenerAbort`, `clickListenerSave`, `clickListenerRemove`) were removed; the single button is
-      built once for both paths.
-- [x] Reuse the Phase 2b two-page machinery for the edit path — `formScrollView` (`@+id/scrollView`) and
-      `resultLayout` (`@+id/accountResult` with `resultSpinner` / `resultIcon` / `resultHeading` /
-      `resultMessage` / `resultButton` / `resultHelpButton`) already exist in `account_setup.xml`, so this
-      is mostly wiring, not new UI. No layout change was needed: `buttonsLayout` lives inside `scrollView`,
-      so hiding the form page already hides the “Next” button.
-- [x] Verify `DoLogin()`’s `EDIT_ACCOUNT` branch does a fresh connection check with the entered settings
-      before it writes them (`LoginThread` already connects first and only then updates userdata, but the
-      check result now has to be shown on the result page rather than as a Snackbar).
-- [x] Keep the existing anti-spoofing rule: if the server field changed and the password field is empty,
-      reject with `R.string.imap_server_changed_new_password` and stay on the form (show it on the form
-      page, not the result page — nothing was checked yet).
-- [x] Result page wording for the edit path: `account_modified` (“Account has been modified”, already
-      returned by `LoginThread` for this action) + `@string/finished` on success;
-      on failure the same error page as create (`@string/IMAP_operation_failed` + reason + `@string/help` + `@string/i_understand` returning to the form with the edited entries intact).
-- [x] Keep the Back-from-result-page behavior from Phase 2b (the `OnBackInvokedCallback` for the failure
-      page). For a _successful_ edit, Back/Up should behave like “Finished”.
-- [x] No new string needed after all: the success heading reuses the existing `account_modified`. The
-      `save`, `delete` and `account_removed` keys are left in place (now unused) to avoid Weblate churn.
-- [x] `AccountListActivity.onActivityResult`: an edited account must refresh the list (it already reloads
-      on `EDIT_ACCOUNT` + OK — confirm “Finished” is the only way to get there, and that a failed edit that
-      the user backs out of leaves the old settings untouched).
+- [ ] `Miscs/LoginThread.java:46` — holds the `AccountConfigurationActivity` in a field, so a slow
+      IMAP connect leaks the activity. This is the only _real_ leak of the three: the class
+      **already** keeps a `FinishListener listener` (`:49`, assigned from the same activity at
+      `:55`), so the activity field is redundant — delete it and call back through the listener only
+      (`:84` is the one other use, `AccountManager.get(accountConfigurationActivity)`).
+- [ ] `ImapNotes3.java:46` `mContext` / `:47` `mContent` — statics, but `mContext` is
+      `getApplicationContext()` (`:74`), so it cannot leak an activity. Suppress with
+      `@SuppressLint("StaticFieldLeak")` + a one-line rationale. `mContent` does hold a view
+      (the Snackbar anchor, set at `:80`) — worth checking it is refreshed per screen before you
+      suppress that one.
 
-### Acceptance criteria
+### 2.8 Accessibility
 
-- [x] Opening an account row’s edit action shows the form pre-filled, with only “Next” as the button.
-- [x] “Next” re-runs the connection check against the entered server settings; the result page shows the
-      outcome.
-- [x] Success → “Finished” returns to the account overview, which shows the changed account name/settings.
-- [x] Failure → the reason plus “I understand” returns to the form with the edits intact and the old
-      account settings unchanged on disk.
-- [x] Changing the server while leaving the password empty is refused with the existing message.
+- [ ] `Miscs/SwipeRevealListView.java:97` overrides `onTouchEvent` without ever calling
+      `performClick()` (`ClickableViewAccessibility`): TalkBack cannot activate a row. Call
+      `performClick()` on `ACTION_UP` when the gesture was not a horizontal drag.
 
-### Notes / remaining
+### 2.9 Manifest hygiene
 
-- Consequence to be aware of until **Phase 5b** lands: there is no way to remove an account any more — the
-  Delete button was this screen’s only one. Editing is still reached by long-press on an account row; 5b
-  replaces that with the swipe-revealed edit / delete.
-- `ListActivity`’s `ResultCodeRemoveAccount` branch in `onActivityResult` was dead code after this phase;
-  it is gone since Phase 9.
+- [ ] No `android:supportsRtl` although the layouts use RTL attributes (`RtlEnabled`). Decide:
+      support RTL (`supportsRtl="true"`, and then the `start`/`end` attrs in
+      `account_setup.xml` / `note_detail.xml` etc. need to be finished properly), or set
+      `supportsRtl="false"` and drop the RTL attrs. Leaving it undecided is what lint is flagging.
+- [ ] `AndroidManifest.xml:8` `<dist:module dist:instant="true" />` — instant apps are gone and are
+      irrelevant for an F-Droid APK. Remove.
+- [ ] `res/mipmap-anydpi-v26/ic_launcher.xml:2` and `ic_launcher_round.xml:2` — adaptive icons need
+      a `<monochrome>` layer for themed icons on Android 13+ (`MonochromeLauncherIcon`).
+- [ ] `AndroidManifest.xml:20-21` `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="32` (`ScopedStorage`).
+      It is capped at 32 already, so this is mostly informational — but if `BackupRestore` works on
+      33+ without it, consider dropping the permission entirely.
 
----
+### 2.10 Small things noticed while reading
 
-## Phase 3 — Remember and restore the last opened account
+- [ ] `res/values/colors.xml:25` — stray trailing `>`: `<color name="ShareActionBgColor">#F9FBE7</color>>`.
+      Harmless to AAPT, but fix it.
+- [ ] `AccountConfigurationActivity.java:115` — string literal in `setText(...)`
+      (`SetTextI18n`); move to a string resource.
+- [ ] `res/layout/note_detail.xml:13` — `InefficientWeight`: `layout_height="wrap_content"` with a
+      weight; use `0dp`.
+- [ ] `res/layout/editor_row.xml:5` — `Overdraw`: root paints a background while the theme paints
+      one too.
+- [ ] `res/layout/account_setup.xml:125` — `tooltipText` needs API 26 while `minSdk` is 25
+      (`UnusedAttribute`); harmless, suppress or accept.
 
-**Status:** implemented together with Phases 5 / 5b and verified on the emulator: opening an account
-stores its name in `de.niendo.ImapNotes3_preferences`, a cold start from the launcher logs
-`Restoring last account: …` and lands straight on that account’s notes list, and Back returns to the
-account overview, which stays below the list in the task stack. The stale-name branch was verified by
-pointing the preference at a non-existent account: the overview is shown and the key is dropped.
+### 2.11 Findings inside translations — fix via Weblate, never by hand
 
-### Deliverable
+Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Weblate:
 
-After a user opens an account, later app launches land in that account’s notes overview if the account still exists.
-
-### Steps
-
-- [x] Add a preference key, for example:
-    - [x] `LAST_ACCOUNT_NAME` — implemented as `PREF_LAST_ACCOUNT_NAME = "LastAccountName"`.
-    - [x] Store it in `SettingsActivity.MAIN_PREFERENCE_NAME`.
-- [x] When `AccountListActivity` launches `ListActivity` for an account, save that account name as last opened
-      (`openAccountNotes` → `saveLastAccountName`).
-- [x] When app starts (`restoreLastAccount` in `AccountListActivity`):
-    - [x] Load the name.
-    - [x] Verify the account still exists (`getAccountsByType`).
-    - [x] If it exists, start `ListActivity` directly for that account.
-    - [x] If it does not exist, stay on account overview and remove the key.
-- [x] Add an escape hatch / navigation behavior:
-    - [x] Back from the restored notes list goes to the account overview — `openAccountNotes` uses
-          `CLEAR_TOP | SINGLE_TOP`, so the overview always stays first in the task stack.
-    - [x] The user is not trapped in one account: the overview is one Back press away and lists all accounts.
-- [x] Restoring happens only in `onCreate` and only when `savedInstanceState == null`. Doing it in
-      `onStart`/`onNewIntent` bounces forever, because opening the notes list clears the task back to the
-      overview, which would then restore the account again.
-- [ ] If exactly one account exists, optionally open it directly by default — skipped: the restore above
-      already does that for the only account, and an account that was never opened is a deliberate choice
-      by the user to look at the overview.
-- [x] Debug log line using the project’s logging pattern: `Log.d(TAG, "Restoring last account: " + lastAccountName);`
-
-### Acceptance criteria
-
-- [x] Opening account A, killing the app (`am force-stop`), reopening from the launcher → account A’s
-      notes list is the resumed activity.
-- [x] Account that no longer exists → account overview and the key is cleared. (Verified by rewriting
-      `LastAccountName` in the preferences file; deleting the one real account on the test device was
-      deliberately not risked.)
-- [x] Pressing back from the notes list still lets the user choose another account.
+- [ ] `app_name` is `translatable="false"` in base but is translated in `values-de:3`,
+      `values-nb:3`, `values-zh-rCN:3` (`Untranslatable`).
+- [ ] `Typos`: `values-nb/strings.xml:51` "Internet" → "Internett"; `values-es/strings.xml:55`
+      "Ultimo" → "Último".
+- [ ] `TypographyEllipsis`: `values-fr/strings.xml:143` uses `...` instead of `…`.
+- [ ] Unused string keys (zero references anywhere, with base line numbers):
+      `new_account:6`, `account_removed:11`, `remove:15`, `check_and_create_account:17`,
+      `syncing:49`, `Waiting_for_sync:53`, `txt_color:62`, `AccountList:81`, `Last_sync:82`,
+      `all_accounts:141`, `OAUTH2:196`.
+      Of these, `all_accounts`, `AccountList`, `new_account`, `check_and_create_account`,
+      `account_removed` are **intentionally kept** (see `AGENTS.md` — deleting keys forces
+      re-translation work); `remove`, `syncing`, `Waiting_for_sync`, `txt_color`, `Last_sync` and
+      `OAUTH2` are genuine candidates for a Weblate-side cleanup.
+      Do **not** add `save` / `delete` to that list — `menu/detail.xml:34,40` use them.
 
 ---
 
-## Phase 4 — Make the notes screen account-scoped
+## 3. Lint configuration — do this early; it makes §1 and §2 measurable
 
-**Status:** implemented and verified on the emulator. Opening an account from the overview now hides the
-account spinner row, titles the action bar with the account name, and adds an Up arrow back to the
-overview. Share/search entry points keep the old spinner mode.
-
-### Deliverable
-
-`ListActivity` becomes the notes overview for one selected account instead of relying on the top account spinner.
-
-### Steps
-
-- [x] Update `ListActivity` to read the account name from the launch intent.
-    - `onCreate` and `onNewIntent` both read `EDIT_ITEM_ACCOUNTNAME`; `scopedAccountName` keeps the scope
-      for the lifetime of the screen (rotation, returning from the editor), unlike `requestedAccountName`,
-      which is cleared once applied.
-- [x] Use the passed account name as the active account on startup.
-    - `applyRequestedAccountToSpinner()` now targets the scoped name, so the existing spinner/refresh
-      machinery (`getSelectedAccount()`, `TriggerSync`, `newNote`, hashtag filter) keeps working untouched.
-- [x] Hide or remove the account spinner in `main.xml`:
-    - [x] First step: hide it conditionally — `R.id.account_layout` is set to `View.GONE` in scoped mode
-          (kept attached, because some `ImapNotes3.ShowMessage` calls are anchored on `accountSpinner`).
-    - [ ] Later: remove it completely once account switching moves fully to `AccountListActivity`.
-- [x] Show the account name as the toolbar title, similar to iOS Notes.
-- [x] Add back/up navigation from the notes list to the account overview.
-    - Up arrow (`android.R.id.home`) calls `finish()`; the overview is already underneath it. Hardware Back works too.
-- [x] Keep the floating add-note button.
-- [x] Keep the existing search and filter behavior for the selected account.
-- [x] Decide what to do with “All accounts”:
-    - [x] Short-term: kept as an overflow item (`R.id.all_accounts`, reusing the existing `all_accounts`
-          string = “All”) that toggles between the scoped account and all accounts. It is a checkable item,
-          visible only in scoped mode and only when more than one account exists — with a single account
-          “All” would be identical and the legacy code disables the spinner anyway.
-    - [ ] Long-term: remove “All accounts” if it conflicts with the Apple Notes-like account-first model.
-- [x] Account management moves out of the notes screen in scoped mode: the “New account” action-bar icon is
-      hidden (the overview owns adding accounts, and it leaves room for the long account name in the title).
-- [x] If the scoped account is deleted while the notes screen exists, that screen finishes itself and lands on
-      the overview (verified in logcat: `onAccountsUpdated: scoped account is gone`).
-- [x] Preserve existing behaviors:
-    - [x] swipe-to-refresh sync
-    - [x] sort by date/title/color
-    - [x] hashtag filtering
-    - [x] note save-state guards when opening notes
-
-### Acceptance criteria
-
-- [x] Tapping account A opens only A’s notes.
-- [x] The toolbar clearly indicates the selected account (title = account e-mail/name).
-- [x] The back button returns to the account overview (verified: Up and Back both land on `AccountListActivity`).
-- [x] Existing note operations still work for one account.
-- [x] Share intents (`ACTION_SEND`) still open the legacy spinner mode: the account row stays visible and the
-      title stays “ImapNotes3”.
-
-### Notes / remaining quirks
-
-- Side effect: with the Up arrow plus a long account name as the title, fewer action-bar icons fit —
-  “Filter by HashTag” and “Refresh” collapse into the overflow menu. Refresh is still available by
-  swipe-to-refresh.
-- Unchanged pre-existing quirk: sharing into the app with zero accounts still re-opens account setup when
-  you press Back there (the old `noAccountExists()` loop).
-- Unchanged pre-existing wrinkle: `ListActivity` never unregisters its `OnAccountsUpdateListener`, so a
-  finished instance keeps reacting to account changes (visible in logcat). Harmless today, but worth fixing
-  in a later cleanup pass.
+- [ ] 3.1 Uncomment the lint block in `build.gradle:83-85`
+      (`lint { baseline = file("lint-baseline.xml") }`) and run `lintDebug` once to create the
+      baseline (no `lint-baseline.xml` exists yet). After committing it, a _rising_ finding count
+      means a real regression instead of 331 lines of known noise.
+- [ ] 3.2 `NonConstantResourceId` is **84 of the 138 warnings** and is a false positive here:
+      `gradle.properties` sets `android.nonFinalResIds=false`, so the IDs _are_ final. Disable the
+      check (`lintOptions`/`lint { disable 'NonConstantResourceId' }`) rather than rewriting every
+      `switch` in `NoteDetailActivity` / `EditorMenuAdapter` / `ListActivity`.
+- [ ] 3.3 Note-background colours must **not** be deleted (§4 traps) but lint calls them
+      `UnusedResources` at `res/values/colors.xml:6` (pink), `:7` (green), `:8` (brown), `:9` (gray).
+      Add `tools:ignore="UnusedResources"` on the note-colour block so the remaining
+      `UnusedResources` warnings become actionable.
+- [ ] 3.4 `res` — `IconMissingDensityFolder`: no `drawable-hdpi/mdpi/xhdpi`. Either accept
+      vector-only drawables (they are all vectors — then suppress) or add raster fallbacks.
+- [ ] 3.5 `build.gradle:101` `com.github.woheller69:FreeDroidWarn:V1.+` is the only dynamic
+      dependency (`GradleDynamicVersion`). Pin it for reproducible builds (note: F-Droid rebuilds
+      from source, so pinning is also what makes their build match yours).
+- [ ] 3.6 Dependency bumps (`NewerVersionAvailable`): `build.gradle:99` jsoup 1.23.1 → 1.23.2;
+      `gradle/wrapper/gradle-wrapper.properties:3` Gradle 9.7.0 → 9.8.2. Check JitPack separately
+      for the `richeditor-android` fork.
+- [ ] 3.7 `build.gradle:19` `OldTargetApi` (targetSdk 35, compileSdk 37). Bump only with a device to
+      test — a targetSdk change alters runtime permissions and background behaviour.
+- [ ] 3.8 Commented-out leftovers in `build.gradle`: `// buildToolsVersion "34.0.0"` (`:14`),
+      `//implementation 'com.google.android.gms:play-services-auth:21.5.0'` (`:89`, see the OAuth2
+      decision in §4), and the `// ToDo` `allprojects { … compilerArgs … }` block (`:104-109`) —
+      either enable the compiler warnings or drop the block.
+- [ ] 3.9 `gradle.properties` — keep the existing flags (`nonTransitiveRClass=false`,
+      `nonFinalResIds=false`, config cache) when touching lint config.
 
 ---
 
-## Phase 4b — Read-only mailbox on the server (bug fix, found while testing Phase 4)
-
-### Deliverable
-
-When the IMAP mailbox cannot be written to, the notes are still downloaded and shown, and the user gets a
-readable explanation instead of JavaMail’s `Cannot open in desired mode`.
-
-### Steps
-
-- [x] `SyncUtils.OpenRemoteIMAPNotesFolder(int mode)` ignored its `mode` argument and always opened the
-      folder `READ_WRITE`, so a plain “Refresh” demanded write access and aborted the whole sync before any
-      note was downloaded.
-- [x] Honour the requested mode; reopen the folder when an open read-only folder has to be written to
-      (JavaMail cannot change the mode of an open folder).
-- [x] `ConnectToRemote` now opens the folder once for writing so a read-only mailbox is detected at the start
-      of every sync; on `ReadOnlyFolderException` it falls back to `READ_ONLY` and remembers the condition
-      (`SyncUtils.RemoteFolderIsReadOnly()`).
-- [x] `SyncAdapter` collects the first failure worth showing (`RememberError`) — including the previously
-      silent failures in `handleNewNotes` / `handleDeletedNotes` — and maps `ReadOnlyFolderException` /
-      `IllegalWriteException` to a new string, `sync_error_read_only_folder`.
-- [x] New string only (no existing keys touched), so Weblate translations are unaffected.
-- [x] Found while verifying the above: the scoped notes list stayed **empty** even though the notes were
-      downloaded. A `Spinner` that is not shown never fires `onItemSelected` (see `Spinner.setSelection`,
-      which only calls `checkSelectionChanged()` when `isShown()`), and Phase 4 hides the account row — so
-      nothing ever called `RefreshList()`. Fixed by refreshing explicitly from `updateAccountSpinner()` and
-      `onCreateOptionsMenu()` (which also covers `RefreshList()`'s `actionMenu == null` guard).
-- [x] `applyRequestedAccountToSpinner()` now also refreshes for the “All” state instead of doing nothing.
-
-### Acceptance criteria
-
-- [x] Refresh on a read-only mailbox downloads and lists the notes (verified on the emulator: `4544.eml`,
-      `4541.eml`, … written after the `read-only` warning in logcat).
-- [x] Opening an account shows its notes straight away, without a manual refresh (verified: 19 rows in the
-      uiautomator dump right after `onCreate`).
-- [x] The Snackbar says the folder is read-only and that changes cannot be uploaded, instead of
-      “Cannot open in desired mode”.
-
-### Notes / remaining quirks
-
-- Unchanged pre-existing behaviour: a note that cannot be uploaded stays in `new/` and keeps the save state
-  `SYNCING`, so tapping it reports “please wait until sync is complete” and does not open it. Same for a
-  pending delete: the file in `deleted/` is dropped even when the server delete failed, so the note reappears
-  on the next sync. Worth revisiting in a later pass (and relevant for the swipe-to-delete in Phase 5).
-- Likely causes of a read-only mailbox are server-side: quota full, missing write rights, or a folder name that
-  points at someone else’s/shared mailbox.
-
----
-
-## Phase 4c — Notes screen: no “Accounts” menu entry, and a faster refresh
-
-### Deliverable
-
-The quick menu of the notes screen no longer offers “Accounts” (Up/Back already returns to the account
-overview), and a refresh that finds nothing new no longer takes about twenty seconds.
-
-### Steps
-
-- [x] Dropped `@+id/account_list` from `res/menu/list.xml` and its case in
-      `ListActivity.onOptionsItemSelected`. The `account_overview` string key is kept (it is the title of
-      `AccountListActivity`), so no translation work is caused.
-- [x] `SyncAdapter.onPerformSync` logs the duration of every step (`onPerformSync connect: … ms` …
-      `onPerformSync total: … ms`), so the cost of a sync can be read from logcat instead of guessed at.
-- [x] `SyncUtils.handleRemoteNotes` asked the server for the UID and the flags of every message one message
-      at a time — one IMAP round trip per note. Both are now fetched for the whole folder in a single
-      `FetchProfile`, and the headers of the notes that really have to be downloaded in one more command.
-- [x] Local / remote UID comparisons use `HashSet` instead of `ArrayList.contains()` inside a loop.
-- [x] The body that was just received is used directly for hashtag extraction
-      (`ListActivity.searchHTMLTagsInHtml`) instead of reading back and re-parsing the `.eml` file that was
-      written a moment before.
-- [x] The pass that re-scans the tags of **every** stored note is skipped when the sync changed nothing —
-      that scan was the bulk of an unchanged refresh. It still runs when notes were imported, uploaded or
-      removed, and imported/saved notes already get their tags updated where they are handled.
-
-### Measurements (emulator, 39 notes, read-only mailbox)
-
-| step                                 | before         | after                                            |
-| ------------------------------------ | -------------- | ------------------------------------------------ |
-| connect + login + open folder        | ~4.5 s         | 2.8 s                                            |
-| compare server with stored notes     | ~1 s           | 0.37 s                                           |
-| re-scan tags of all notes            | ~15 s (always) | skipped; ~0.34 s (incl. disconnect) when it runs |
-| **whole refresh that finds nothing** | **~20 s**      | **3.5 s**                                        |
-
-### Acceptance criteria
-
-- [x] Overflow menu of the notes screen offers Filter by HashTag, Refresh, Sort by …, Settings — no
-      “Accounts”.
-- [x] Up / Back still returns to the account overview.
-- [x] The notes of the account are still listed, and the hashtag filter still finds the tags.
-- [x] The duration of every sync step is in the log.
-
-### Notes / remaining
-
-- In the legacy unscoped mode (reached through a share intent) there is no menu route to the account
-  overview any more; the account row with its edit / remove buttons is still there.
-- The body of a note that is really new is still fetched one note at a time: JavaMail’s `FetchProfile` has
-  no item for the content, so the first import of a large mailbox stays slow (measured 0.75–2 s per note).
-  Turning on `mail.imap.pipelining` for the IMAP session would let those commands overlap, but it changes
-  the conversation with the server and is known to upset some servers, so it was left alone.
-- The list is still only redrawn once the whole sync has finished, which makes a refresh feel slower than
-  it is.
-
----
-
-## Phase 4d — Up from Settings landed on an unscoped notes list (bug fix, found while testing)
-
-### Deliverable
-
-Opening Settings from an account’s notes list and going back (or up) returns to that same notes list.
-
-### Steps
-
-- [x] `SettingsActivity.onSupportNavigateUp()`: the Up button used the parent declared in the manifest
-      (`ListActivity`) and re-launched it with a bare intent (`CLEAR_TOP`), instead of simply leaving the
-      Settings screen. Up now just finishes Settings — Settings is only ever opened from the notes list.
-- [x] Root cause kept covered as well: `ListActivity.onNewIntent` reset `scopedAccountName` to the account
-      name carried by the incoming intent, which is `null` for an intent that only wants to bring the
-      running list back to the front — the list silently turned into the old unscoped main screen. An
-      intent without an account name now keeps the current scope (and puts the extra back, so recreating
-      the activity restores the same account).
-
-### Acceptance criteria
-
-- [x] Notes list → Settings → Up arrow: the scoped list is shown again (account name as title, no account
-      spinner, notes listed).
-- [x] Notes list → Settings → Back: same.
-- [x] A bare `CLEAR_TOP` relaunch of `ListActivity` keeps the account it was opened for (verified through
-      logcat: `onNewIntent: staying with the account …`).
-
-### Notes / remaining
-
-- The unscoped notes list (title “ImapNotes3”, account spinner) used to exist on purpose: it is what a
-  share intent (`ACTION_SEND`) opened. It is gone since **Phase 9** — the share filters live on
-  `AccountListActivity`, which chooses the account and forwards the payload to the scoped list.
-- Settings can only be reached from the notes list, not from the account overview.
-
----
-
-## Phase 5 — Add swipe-to-reveal actions to note rows
-
-**Status:** implemented on the existing `ListView` (no `RecyclerView` migration) and verified on the
-emulator: a horizontal drag slides the row content over a red delete button, tapping the button closes
-the row and asks for confirmation, tapping a revealed row only closes it, vertical dragging still
-triggers the refresh, and neither scrolling nor filtering leaves a row stuck open.
-
-### Deliverable
-
-User can swipe a note row sideways to reveal extra actions.
-
-### Recommended approach
-
-Use the existing `ListView` and custom row layout first. A full `RecyclerView` migration can be deferred.
-
-### Steps
-
-- [x] Callback interface for row actions: `NotesListAdapter.RowActionListener` with
-      `onNoteDeleteRequested(OneNote note)`; `onNoteEditRequested` intentionally left for later.
-- [x] Modify `note_element.xml` to contain:
-    - [x] Root is now `Miscs.SwipeRevealRow` (a `FrameLayout`) with an opaque `@+id/rowContent` holding
-          the original title/date layout.
-    - [x] `@+id/rowActions` declared **first**, so it sits underneath the content and only appears while
-          the content slides away.
-    - [x] A delete button (`@+id/deleteNoteButton`, `@color/DestructiveActionColor`).
-    - [ ] Optional buttons later: open, share, color, pin, archive.
-- [x] Swipe gesture handling — deliberately **not** a `GestureDetector` inside the row: a row only
-      receives move events when one of its children is clickable, so the state machine lives in
-      `Miscs/SwipeRevealListView`, which both lists use. It records the DOWN, lets the list scroll
-      normally, intercepts once the drag is horizontal past the touch slop, drags `rowContent` with
-      `translationX`, and on release snaps open (≥ half the panel) or back to closed.
-- [x] Handle action-button clicks:
-    - [x] `NotesListAdapter.bindView` re-wires `deleteNoteButton` to the `OneNote` that is bound at that
-          moment and calls `RowActionListener.onNoteDeleteRequested`.
-    - [x] `ListActivity.ConfirmAndDeleteNote` invokes the existing delete path:
-          `UpdateList(uid, null, null, accountName, UpdateThread.Action.Delete)`.
-- [x] Confirmation dialog rather than Snackbar + Undo. The existing delete moves the `.eml` into the
-      account’s `deleted/` directory and writes the DB save state, so it cannot simply be rolled back;
-      the dialog is the documented acceptable first pass.
-- [x] Avoid opening the note editor when the row is already revealed:
-    - [x] A tap while a row is open closes it — handled in `SwipeRevealListView.onTouchEvent` for UP, and
-          defensively again at the top of both item-click listeners.
-    - [x] Tapping a closed row opens the editor as before.
-- [x] No conflict with swipe-to-refresh: vertical movement past the slop is left to the list and
-      `SwipeRefreshLayout`; only a horizontal drag is intercepted (verified: a pull still logs
-      `TriggerSync`).
-- [x] List recycling: `bindView` calls `concealImmediately()`, and `SwipeRevealRow` keeps a single static
-      weak reference to the one revealed row, so scrolling/filtering cannot leave translated rows behind.
-- [x] Hidden buttons must not be tappable: the panel is only clickable while the row is revealed
-      (`setActionsTouchEnabled`), otherwise the right edge of a _closed_ row would trigger delete.
-- [x] Important gotcha found while implementing: `AbsListView` only performs an item click when the row has
-      **no explicitly focusable descendant**, and the constructor of `ImageButton` calls
-      `setFocusable(true)` whatever the layout says. Without
-      `setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS)` in `SwipeRevealRow.onFinishInflate()`, tapping
-      any row of either list did nothing at all.
-
-### Acceptance criteria
-
-- [x] Swiping a note row horizontally reveals a visible delete action (verified: `rowContent` slides to
-      `[0,210][912,320]`, the button exposed at `[912,210][1080,320]`).
-- [x] Tapping the delete action closes the row, shows "Delete note", and YES would route through
-      `UpdateThread.Action.Delete`; NO was used during testing so no note was lost (39 `.eml` files, empty
-      `deleted/`).
-- [x] Tapping the rest of the row still opens the note editor (verified: `NoteDetailActivity` resumed).
-- [x] Scrolling the list does not leave stuck swipe states (verified: no translated rows after scrolling
-      up and down).
-
----
-
-## Phase 5b — Account rows: clickable shelf items with swipe actions
-
-**Status:** implemented and verified on the emulator, sharing the Phase 5 mechanism. Account **delete**
-could only be verified up to the confirmation dialog: the single account on the test device is the
-user’s real read-only mailbox, and a throwaway second account cannot be created because the setup flow
-requires a live IMAP password. The `RemoveAccount` scoping fix is therefore code-reviewed, not
-exercised end to end.
-
-### Deliverable
-
-An account row in the account overview is a “shelf” item: tap it to open that account’s notes list, and
-slide it sideways to reveal action icons — a red delete and an edit button. Delete is removed from the
-account edit screen (Phase 2c) and lives only here, iOS-style.
-
-### Steps
-
-- [x] **Fixed `SyncUtils.RemoveAccount` first.** It listed and deleted every file under
-      `ImapNotes3.GetRootDir()`, i.e. the local caches of **all** accounts. It now removes only
-      `ImapNotes3.GetAccountDir(accountName)` (including `new/` and `deleted/`) with
-      `FileUtils.deleteDirectory`, keeping the existing `ClearDb` and shared-prefs cleanup. It is invoked
-      from `ImapNotesAuthenticatorService.Authenticator.getAccountRemovalAllowed`, so the UI only calls
-      `AccountManager.removeAccount`.
-- [x] Whole row tappable: `account_list.xml` uses `SwipeRevealListView` and `account_element.xml` has the
-      `rowActions` / `rowContent` pair. (The tap did nothing until the focusable-row issue described in
-      Phase 5 was fixed — that was the blocker here, not the click wiring.)
-- [x] Two revealed actions: edit (`ic_action_user_edit` on the new `@color/EditActionColor`, opens the
-      Phase 2c `Actions.EDIT_ACCOUNT` flow) and delete (`ic_action_delete` on the new
-      `@color/DestructiveActionColor`, light and dark variants added next to `ResultOkColor` /
-      `ResultFailedColor`; the note-background `@color/red` was left untouched).
-- [x] Delete asks for confirmation (`delete_account` plus the new
-      `are_you_sure_you_wish_to_delete_the_account`, base English only — the wording states that the notes
-      stay in the mailbox on the server) and then `AccountManager.removeAccount(...)` plus
-      `clearLastAccountName`, so the Phase 3 restore falls back to the overview.
-- [x] Same reveal mechanism as Phase 5 (shared `SwipeRevealRow` / `SwipeRevealListView`), including the
-      recycling reset in the adapter’s `getView`.
-- [x] Only one row revealed at a time, a tap elsewhere closes it, vertical scrolling never reveals.
-- [x] Long-press-to-edit was removed from `AccountListActivity`; the revealed edit action replaces it.
-
-### Acceptance criteria
-
-- [x] Tapping an account row opens that account’s notes list (verified: `onItemClick` →
-      `openAccountNotes`, `ListActivity` resumed).
-- [x] Swiping a row sideways reveals edit and red delete (verified: `rowContent` slides to
-      `[0,210][702,442]`, buttons exposed at `[702,210][1080,442]`).
-- [x] Edit takes the user to the Phase 2c form for that account (verified: `AccountConfigurationActivity`
-      resumed; Back returns to the overview with the account untouched).
-- [ ] Delete removes the account while the other accounts keep their local caches — **verified only up to
-      the confirmation dialog** (see Status); NO leaves the account, its 39 `.eml` files and the
-      `AccountManager` entry intact.
-- [x] Scrolling the list does not leave rows stuck revealed.
-
-### Notes / remaining
-
-- Long-press editing is gone; the revealed edit action is the only path now.
-- `ListActivity`’s orphaned `ResultCodeRemoveAccount` plumbing from the legacy spinner screen was removed
-  in Phase 9.
-
----
-
-## Phase 6 — Polish the account overview visually
-
-### Deliverable
-
-The account list feels closer to Apple Notes folders/accounts.
-
-### Steps
-
-- [ ] Add visual hierarchy:
-    - [ ] Account name as primary text.
-    - [ ] Server or username as secondary text.
-    - [ ] Optional note count per account.
-- [ ] Use consistent spacing and row height.
-- [ ] Add subtle dividers or card spacing.
-- [ ] Add an “Add account” row or FAB at the bottom.
-- [ ] Add icons only if they do not overcomplicate the screen.
-- [ ] Ensure light and dark themes work.
-- [ ] Keep text colors compatible with `values-night`.
-- [ ] Use `Material` components where already used by project, such as FAB and cards.
-
-### Acceptance criteria
-
-- Account overview looks less like a utility screen and more like a primary Notes screen.
-- Empty state is clean and obvious.
-- Dark mode remains readable.
-
----
-
-## Phase 7 — Polish the notes overview visually
-
-### Deliverable
-
-The account’s note list feels closer to Apple Notes’ folder view.
-
-### Steps
-
-- [ ] Replace the account spinner area with a simple top bar:
-    - [ ] Back arrow.
-    - [ ] Account/folder name.
-    - [ ] Search action.
-- [ ] Keep floating `+` note button.
-- [x] Make note rows visually similar:
-    - [x] Same padding and text sizes as the rows of the account overview.
-    - [x] Title on its own line, same size as the account name of an account row.
-    - [x] Second line: date in short form, then the text that follows the title in the note.
-    - [ ] Bold title.
-    - [x] Smaller timestamp line.
-    - [x] Optional first-line snippet beneath title.
-- [x] Consider using note background color as a subtle row background.
-- [ ] Consider grouping by date sections later.
-- [ ] Keep sort options accessible, but less prominent than iOS-style actions.
-
-> **Status (rows, first pass).** `note_element.xml` now mirrors `account_element.xml`: the row is
-> `wrap_content` with `minHeight="64dp"` and 16dp/10dp padding, `noteTitle` uses
-> `?android:attr/textAppearanceLarge` (the hard-coded `22dp` and the odd margins are gone). The
-> second line is a horizontal pair: `noteDate` in the normal text colour followed by `noteSnippet`
-> (`layout_weight=1`, one line, ellipsised) in the faded colour the date used to have.
->
-> - The date is the new `Utilities.GetShortDateString()` (`dd/MM/yyyy`, a fixed day-first pattern —
->   the device short format would be locale dependent and carries the time). It replaced
->   `DateFormat.getDateTimeInstance()` in `NotesDb.GetStoredNotes` and in the two places in
->   `UpdateThread` that refresh the date of a row after saving.
-> - The snippet is not in the database: `NotesListAdapter` reads the note file
->   (`SyncUtils.GetNoteFile`, a small new helper that also `ReadMailFromNoteFile` now uses), takes
->   the lines after the title line of `Html.fromHtml()` output and caches the result per file and
->   modification time, so an edited note is read again by itself. Notes without a local file show no
->   snippet. The cache is bounded (400 entries, 200 characters per snippet).
-> - `OneNote` gained the `SNIPPET` key, and `ListActivity` maps `{TITLE, DATE, SNIPPET}` to
->   `{noteTitle, noteDate, noteSnippet}`.
-> - Not covered by the emulator check: the "All" variant of a scoped list, which appends the account
->   name to the date string and needs a second account to be reachable at all.
-
-### Acceptance criteria
-
-- Notes list opens as a clean account-scoped folder view.
-- Note titles are visually prioritized.
-- The account name is clear in the toolbar.
-
----
-
-## Phase 8 — Future note editor theming
-
-This is intentionally vague until later.
-
-### Possible follow-up TODOs
-
-- [ ] Make note editor screen resemble Apple Notes:
-    - [ ] Cleaner title/date header.
-    - [ ] Less prominent toolbar.
-    - [ ] Simpler formatting toolbar.
-    - [ ] Background color picker matching iOS-style sheet.
-- [ ] Decide whether `RichEditor` should keep current formatting layout.
-- [ ] Add editor visual polish without changing sync format.
-- [ ] Keep Apple Notes wire format intact.
-
----
-
-## Phase 9 — Get rid of the unscoped notes list (share intents)
-
-**Status:** implemented and verified on the emulator. The share filters now live on `AccountListActivity`,
-which acts as the "which account?" step and forwards the payload to the scoped `ListActivity` (now
-`exported="false"`); the spinner row, the `all_accounts` menu item and the unscoped branch are gone. The
-zero-account and the more-than-one-account share paths are written but could not be exercised on the test
-device, which has exactly one real account (deleting it was off limits, and a throwaway second account
-needs a live IMAP server).
-
-### Deliverable
-
-`ListActivity` only ever shows one account’s notes. The legacy “all accounts” list — the one with the
-account spinner that share intents currently open — is replaced by a proper routing step, so it can be
-deleted.
-
-Why this exists: everything else in the app is now account-scoped, but `ACTION_SEND` / `SEND_MULTIPLE`
-/ `SEARCH` intent filters are still registered on the unscoped `ListActivity` (see the manifest comment
-“Share and search entry points stay here until they can be forwarded from `AccountListActivity`”).
-Every time a share intent fires, the app reopens that legacy screen. This needs a new “which account?”
-reference step instead.
-
-### Steps
-
-- [x] Moved the share `intent-filter`s (`SEND` text / image / rfc822 and `SEND_MULTIPLE`, keeping the
-      `intent_save_as_note` / `intent_import_note` labels) from `.ListActivity` to
-      `.AccountListActivity`. `ListActivity` became `exported="false"`, `SettingsActivity`’s
-      `parentActivityName` now points at `.AccountListActivity`, and the `android.app.searchable`
-      meta-data (with its “what is this for?” TODO comment) was left untouched.
-- [x] `AccountListActivity` detects a share intent in `onCreate` / `onNewIntent` (`IsShareIntent()` +
-      `routeShareIntent()`) and decides the target account — the “new reference system”:
-    - [x] Zero accounts: the share is remembered in `pendingShare`, setup is started, and the share is
-          forwarded when setup returns `ResultCodeSuccess` together with `EDIT_ITEM_ACCOUNTNAME` (dropped
-          when the user cancels). No Back-loop. _Not exercised on a device._
-    - [x] One account: forwarded directly.
-    - [x] More than one: always asks — a one-tap `AlertDialog` (title `select_one_account`) listing the
-          account names, plus Cancel. Deliberate choice: never silently take the last-opened account for a
-          share the user aimed at a specific account.
-- [x] `sendShareToAccount()` copies the incoming intent (so `EXTRA_TEXT` / `EXTRA_STREAM` / `EXTRA_EMAIL`,
-      the action and the MIME type arrive unchanged), `setClass(this, ListActivity.class)`, adds
-      `CLEAR_TOP | SINGLE_TOP` and `FLAG_GRANT_READ_URI_PERMISSION`, and puts `EDIT_ITEM_ACCOUNTNAME`, so
-      the existing `Check_Action_Send()` handling (Insert / Update via `UpdateList` and
-      `UpdateThread.Action.Insert`) runs unchanged under a scope. It also calls `saveLastAccountName()`.
-- [x] Deleted unscoped mode from `ListActivity` (~120 lines):
-    - [x] `account_layout` is gone from `main.xml` (`swipeContainer` is constrained to the parent top) and
-          `res/layout/account_spinner_item.xml` was deleted; `getSpinnerPos`,
-          `applyRequestedAccountToSpinner`, `updateAccountSpinner`, `setPreferences` /
-          `ACCOUNTSPINNER_POS`, the `OnItemSelectedListener`, `UpdateScopeTitle`,
-          `UpdateScopedMenuItems` and `noAccountExists` are gone.
-    - [x] `showingAllAccounts` is gone: `getSelectedAccountName()` / `getSelectedAccount()` are
-          scope-based (`getAccountFromName(scopedAccountName)`), `RefreshScopedList()` replaces the spinner
-          refresh, `UpdateScopeUi()` only sets the Up button and the title, and `RefreshList` bails out on
-          an empty account name, which keeps `NotesDb.GetStoredNotes("")` (the “all accounts” query)
-          unreachable from the list.
-    - [x] `newaccount` and `all_accounts` were removed from `res/menu/list.xml`. The string keys
-          `all_accounts`, `AccountList` and `new_account` are now unused but **kept on purpose** —
-          deleting a key costs Weblate re-translation. `select_one_account` is still used (the move
-          dialog in `NoteDetailActivity` and the new share picker). `values/strings.xml` is byte-identical
-          to HEAD.
-    - [x] `Check_Action_Send()` no longer does the `GetAccountNameForItem` cross-account lookup (it refuses
-          an unscoped list instead) and the orphaned `ResultCodeRemoveAccount` branch plus the
-          `ADD_ACCOUNT` / `EDIT_ACCOUNT` request codes are deleted.
-- [x] “All accounts” is gone as a concept: no screen shows notes of every account at once. Backup and
-      restore adapted — `BackupRestore` no longer calls `accountList.remove(0)` (the caller’s list has no
-      fake “All” entry any more, so that line would have emptied the restore picker) and the all-accounts
-      archive is titled with `R.string.app_name`. This was the one hidden coupling worth finding: several
-      `accountList.size()` comparisons assume index 0 is a real account.
-
-### Acceptance criteria
-
-- [ ] Sharing text / an image / an rfc822 message from another app lands in the chosen account’s notes
-      list with the new note visible after the upload, and never shows the spinner list.
-      _Partly verified:_ a `text/plain` share (warm and after a force-stop) logs
-      `routeShareIntent: android.intent.action.SEND text/plain` → `sendShareToAccount: …`, reuses the
-      existing `ListActivity` instance, shows the “Insert shared data as new note” Snackbar, and OK opens
-      the editor; Back from there discards it, so no junk note is left. Image and rfc822 shares share the
-      same code path but were not fired from another app.
-- [ ] Sharing with zero accounts leads to account setup without a Back-loop, then to a note.
-      _Not tested: would need the only account on the device removed._
-- [x] `grep -rn "accountSpinner\|all_accounts\|showingAllAccounts"` finds nothing in code or layouts —
-      only the unused `all_accounts` key in `values/strings.xml`.
-- [x] Normal navigation is unaffected: overview → tap account → that account’s notes (title = account
-      name, Up arrow, no spinner row), Settings → Up returns the _same_ list instance, the menu Refresh and
-      pull-to-refresh both start a sync, a row tap opens the editor, and a row swipe still reveals delete
-      with its confirmation dialog. The overflow menu is now only Filter by HashTag / Refresh / Sort ×3 /
-      Settings.
-
-### Notes / remaining
-
-- `routeShareIntent()` is only called from `onCreate` when `savedInstanceState == null` (the same trap as
-  `restoreLastAccount()`: routing in `onStart`/`onNewIntent` for a launch would bounce `CLEAR_TOP` /
-  `SINGLE_TOP` forever). Consequence: if the process is killed while a share waits for a new account,
-  `pendingShare` is restored but not re-routed by itself — the user has to start setup again (or the share
-  is dropped). Kept as is; revisit if it ever bites.
-- The share “Insert …” Snackbar can be displaced by the read-only sync-error Snackbar. Snackbar queueing
-  behaviour is pre-existing, not introduced here.
-- `ListActivity` is no longer exported, so `adb shell am start -n de.niendo.ImapNotes3/.ListActivity` is
-  refused. Drive it through `AccountListActivity` (the share intent) when testing from adb.
-- The `ACTION_SEARCH` filter was **dropped** rather than routed: no code in the app handles `ACTION_SEARCH`
-  (in-app search is a `SearchView` in the list menu). The `xml/searchable` resource and the manifest
-  meta-data stay, with their existing TODO comment.
-- Strings: rather than hand-editing a Weblate-managed file, the now-unused keys were left in place. If the
-  maintainer wants them gone, do it through Weblate so the 15+ locales get cleaned up in one place.
-
----
-
-## Suggested implementation order
-
-Pick them one by one:
-
-1. [x] `TODO.md` approved.
-2. [x] Phase 1: create non-launcher account overview screen manually reachable for testing.
-3. [x] Phase 2: make it launcher and clean up navigation.
-4. [x] Phase 2b: turn account setup into a form + result flow.
-5. [x] Phase 4: hide the account spinner and scope the notes screen to one account (done early — opening
-       an account from the overview needed a notes screen that reads as that account’s list).
-6. [x] Phase 4b: handle a read-only mailbox and fix the empty scoped list (found while testing Phase 4).
-7. [x] Phase 4c: remove the “Accounts” menu entry and speed up a refresh.
-8. [x] Phase 4d: Up from Settings returned an unscoped notes list (found while testing).
-9. [x] Phase 3: persist last opened account (implemented together with 11 and 12, so the overview could
-       be tested end to end).
-10. [x] Phase 2c: account edit uses the add flow (check + result page).
-11. [x] Phase 5: add swipe actions to note rows.
-12. [x] Phase 5b: account rows as shelf items with swipe actions (`SyncUtils.RemoveAccount` scoped to the
-        removed account only).
-13. Phase 6: polish account overview.
-14. Phase 7: polish notes overview.
-15. [x] Phase 9: delete the unscoped notes list once share intents are routed.
-16. Later: editor theming pass.
-
----
-
-## Risk notes
-
-- ~~The share-intent flow is tied to `ListActivity`.~~ Resolved in Phase 9: the filters moved to
-  `AccountListActivity`, which picks the account and forwards the payload scoped. Watch out for the
-  `savedInstanceState == null` guard there, and remember `ListActivity` is not exported any more.
-- `SyncUtils.RemoveAccount` used to delete _all_ local files under the app root dir, not just the removed
-  account’s. Fixed in Phase 5b; worth an end-to-end check once a second account can be created on a device.
-- The existing `ListActivity` uses static state and account listeners; moving navigation around should not break account updates.
-- Swipe behavior on `ListView` can fight with recycling and swipe-to-refresh. Two things cost the most
-  time in Phase 5: the gesture has to be recognized in a `ListView` subclass (a plain row never sees the
-  move events unless one of its children is clickable), and a row containing an `ImageButton` needs
-  `setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS)`, otherwise `AbsListView` refuses to perform the
-  item click and rows stop reacting to taps.
-- Deleting notes must continue to route through the existing delete/sync mechanism so server state stays correct.
-- New strings should be added only in base English `strings.xml`; translations should come through Weblate.
+## 4. Deferred deliberately (needs design, a device, or a product decision)
+
+- [ ] **SQL is string-concatenated** in `Data/NotesDb.java`: `:150`, `:176`, `:178`, `:192`, `:203`
+      (plus the migration statements at `:123, 127, 131, 136`, which are lower risk). Account names
+      and hashtags flow into these strings — a name containing `'` breaks the statement. Move to
+      `insert`/`update`/`delete` with `ContentValues` + `selectionArgs`, one method per commit.
+- [ ] **Save-state edge cases** (carried over from the retired navigation plan, still true):
+      a note whose upload fails stays in `new/` with state `SYNCING` and cannot be opened; a pending
+      deletion drops the local `deleted/` file even when the server delete failed, so the note
+      reappears. Needs a small state machine around `OneNote.save_state`.
+- [ ] **Sync performance**, highest payoff first: redraw the list incrementally instead of only
+      after a whole sync; batch the first-import body fetches (JavaMail has no `FetchProfile` item
+      for content — may need IMAP pipelining, `mail.imap.pipelining`); the per-step duration logs
+      (`onPerformSync …: … ms`) already give you the measurements.
+- [ ] **OAuth2 decision**: `Data/Security.java:60` has the enum entry commented out and
+      `res/values/strings.xml:196` `OAUTH2` is unreferenced, while `build.gradle:89` keeps
+      `play-services-auth` commented out. Either delete all three remnants (Google-dependent, and
+      F-Droid does not want non-free SDKs) or implement it. Leaving the trio half-alive is the
+      worst option.
+- [ ] **`AsyncTask` migration**: `UpdateThread`, `SyncThread`, `LoginThread` — deprecated since
+      Android 11 but pervasive. Only worth touching when one of them changes anyway.
+- [ ] `AndroidManifest.xml:126` `TODO: What is StubProvider for?` — answer: the sync adapter needs a
+      content authority (`de.niendo.ImapNotes3.provider`), so `Sync/StubProvider` is required.
+      Replace the TODO with that sentence rather than deleting the provider.
+- [ ] `Miscs/SmtpServerNameFinder.java` is wired to the account form only:
+      `AccountConfigurationActivity.java:256` fills the server field from the e-mail domain.
+      Confirm that is the intended UX, or the class is doing less than it looks like.
+
+## Traps — do not "clean" these
+
+- The note-background colour names (`blue`, `yellow`, `green`, `red`, `brown`, `gray`, `pink`,
+  `black`, `white`, `none`) are looked up **reflectively by name** in
+  `Utilities.getColorIdByName` (`Miscs/Utilities.java`) and are persisted inside note HTML.
+  Renaming or deleting them silently breaks existing notes, and lint keeps flagging them as unused
+  (see §3.3). Status/action colours (`ResultOkColor`, `ResultFailedColor`, `DestructiveActionColor`,
+  `EditActionColor`) are separate and must exist in **both** `values/colors.xml` and
+  `values-night/colors-night.xml`.
+- `NonConstantResourceId` and the note-colour `UnusedResources` warnings are false positives —
+  see §3.2 and §3.3.
+- Never hand-edit `values-*/strings.xml` (15+ locales, managed on Weblate) — see §2.11.
+- `keystore.jks` is gitignored and absent while `build.gradle` commits plaintext keystore passwords
+  (legacy F-Droid-style setup, and _both_ build types use that signingConfig). Do not "fix" either
+  silently; see `AGENTS.md` for the local debug-keystore workaround.
+- `ListActivity` is not exported and account scope must survive rotation and `CLEAR_TOP` relaunches —
+  relevant if you touch §2.2.
