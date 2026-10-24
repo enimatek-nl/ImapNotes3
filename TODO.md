@@ -212,47 +212,59 @@ same check + result page: “Finished” back to the overview when the connectio
 back to the form when it does not. The Delete button disappears from this screen (it moves to the account
 overview — see Phase 5b).
 
+**Status:** implemented and verified on the emulator: editing an account (still long-press on an account
+row for now) opens the same form with only “Next”, the check runs against the entered settings, success
+shows “Account has been modified” + “Finished” landing back on the overview, a failed check shows the
+reason with “Help” / “I understand”, Back from it returns to the form with the edits intact, and the old
+account settings stay untouched on disk after a failed check.
+
 ### Steps
 
-- [ ] In `AccountConfigurationActivity`, drop the programmatic button trio for the edit path (currently
+- [x] In `AccountConfigurationActivity`, drop the programmatic button trio for the edit path (currently
       built in the `EDIT_ACCOUNT` branch of the layout setup: Cancel → `clickListenerAbort`, Delete →
       `clickListenerRemove`, Save → `clickListenerSave`) and use the same single `@string/next` button +
-      `clickListenerLogin` the create path already builds.
-- [ ] Reuse the Phase 2b two-page machinery for the edit path — `formScrollView` (`@+id/scrollView`) and
+      `clickListenerLogin` the create path already builds. The three now-unused listeners
+      (`clickListenerAbort`, `clickListenerSave`, `clickListenerRemove`) were removed; the single button is
+      built once for both paths.
+- [x] Reuse the Phase 2b two-page machinery for the edit path — `formScrollView` (`@+id/scrollView`) and
       `resultLayout` (`@+id/accountResult` with `resultSpinner` / `resultIcon` / `resultHeading` /
       `resultMessage` / `resultButton` / `resultHelpButton`) already exist in `account_setup.xml`, so this
-      is mostly wiring, not new UI.
-- [ ] Verify `DoLogin()`’s `EDIT_ACCOUNT` branch does a fresh connection check with the entered settings
+      is mostly wiring, not new UI. No layout change was needed: `buttonsLayout` lives inside `scrollView`,
+      so hiding the form page already hides the “Next” button.
+- [x] Verify `DoLogin()`’s `EDIT_ACCOUNT` branch does a fresh connection check with the entered settings
       before it writes them (`LoginThread` already connects first and only then updates userdata, but the
       check result now has to be shown on the result page rather than as a Snackbar).
-- [ ] Keep the existing anti-spoofing rule: if the server field changed and the password field is empty,
+- [x] Keep the existing anti-spoofing rule: if the server field changed and the password field is empty,
       reject with `R.string.imap_server_changed_new_password` and stay on the form (show it on the form
       page, not the result page — nothing was checked yet).
-- [ ] Result page wording for the edit path: “Account has been updated” + `@string/finished` on success;
+- [x] Result page wording for the edit path: `account_modified` (“Account has been modified”, already
+      returned by `LoginThread` for this action) + `@string/finished` on success;
       on failure the same error page as create (`@string/IMAP_operation_failed` + reason + `@string/help` + `@string/i_understand` returning to the form with the edited entries intact).
-- [ ] Keep the Back-from-result-page behavior from Phase 2b (the `OnBackInvokedCallback` for the failure
+- [x] Keep the Back-from-result-page behavior from Phase 2b (the `OnBackInvokedCallback` for the failure
       page). For a _successful_ edit, Back/Up should behave like “Finished”.
-- [ ] Add one new base-English string for the “account has been updated” heading; leave `save` and `delete`
-      keys in place (unused for now) to avoid Weblate churn.
-- [ ] `AccountListActivity.onActivityResult`: an edited account must refresh the list (it already reloads
+- [x] No new string needed after all: the success heading reuses the existing `account_modified`. The
+      `save`, `delete` and `account_removed` keys are left in place (now unused) to avoid Weblate churn.
+- [x] `AccountListActivity.onActivityResult`: an edited account must refresh the list (it already reloads
       on `EDIT_ACCOUNT` + OK — confirm “Finished” is the only way to get there, and that a failed edit that
       the user backs out of leaves the old settings untouched).
 
 ### Acceptance criteria
 
-- [ ] Opening an account row’s edit action shows the form pre-filled, with only “Next” as the button.
-- [ ] “Next” re-runs the connection check against the entered server settings; the result page shows the
+- [x] Opening an account row’s edit action shows the form pre-filled, with only “Next” as the button.
+- [x] “Next” re-runs the connection check against the entered server settings; the result page shows the
       outcome.
-- [ ] Success → “Finished” returns to the account overview, which shows the changed account name/settings.
-- [ ] Failure → the reason plus “I understand” returns to the form with the edits intact and the old
+- [x] Success → “Finished” returns to the account overview, which shows the changed account name/settings.
+- [x] Failure → the reason plus “I understand” returns to the form with the edits intact and the old
       account settings unchanged on disk.
-- [ ] Changing the server while leaving the password empty is refused with the existing message.
+- [x] Changing the server while leaving the password empty is refused with the existing message.
 
 ### Notes / remaining
 
-- `clickListenerRemove` currently ends the activity with
-  `setResult(ListActivity.ResultCodeRemoveAccount, intent)`; once delete is gone from this screen that
-  result code has no producer left and can be retired together with the unscoped list (Phase 9).
+- Consequence to be aware of until **Phase 5b** lands: there is no way to remove an account any more — the
+  Delete button was this screen’s only one. Editing is still reached by long-press on an account row; 5b
+  replaces that with the swipe-revealed edit / delete.
+- `ListActivity`’s `ResultCodeRemoveAccount` branch in `onActivityResult` is now dead code (nothing
+  produces that code any more) and goes away together with the unscoped list in Phase 9.
 
 ---
 
@@ -581,8 +593,9 @@ account edit screen (Phase 2c) and lives only here, iOS-style.
 
 ### Notes / remaining
 
-- `AccountListActivity` currently has an `editAccountButton`-style affordance per row; fold it into the
-  revealed actions instead of a permanently visible button.
+- Editing an account is currently a **long-press** on the row in `AccountListActivity`
+  (`setOnItemLongClickListener` → `editAccount`); replace it with the revealed edit action once swipe
+  works.
 - The listActivity-side `editAccountButton` / account spinner belong to the unscoped list and stay until
   Phase 9.
 
@@ -734,7 +747,7 @@ Pick them one by one:
 7. [x] Phase 4c: remove the “Accounts” menu entry and speed up a refresh.
 8. [x] Phase 4d: Up from Settings returned an unscoped notes list (found while testing).
 9. Phase 3: persist last opened account.
-10. Phase 2c: account edit uses the add flow (check + result page).
+10. [x] Phase 2c: account edit uses the add flow (check + result page).
 11. Phase 5: add swipe actions to note rows.
 12. Phase 5b: account rows as shelf items with swipe actions (fix `SyncUtils.RemoveAccount` first).
 13. Phase 6: polish account overview.

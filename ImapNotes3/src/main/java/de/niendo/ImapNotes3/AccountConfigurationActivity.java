@@ -89,18 +89,6 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
     @Nullable
     private static Account myAccount = null;
     private static AccountManager accountManager;
-    private final OnClickListener clickListenerRemove = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            // Click on Remove Button
-            accountManager.removeAccount(myAccount, null, null, null);
-            ImapNotes3.ShowMessage(R.string.account_removed, accountnameTextView, 3);
-            Intent intent = new Intent();
-            intent.putExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME, GetTextViewText(accountnameTextView));
-            setResult(ListActivity.ResultCodeRemoveAccount, intent);
-            finish();//finishing activity
-        }
-    };
     private AppCompatDelegate mDelegate;
     private TextView accountnameTextView;
     private TextView usernameTextView;
@@ -258,16 +246,6 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         Log.d(TAG, "clickListenerLogin  onClick");
         CheckNameAndLogIn();
     };
-    private final OnClickListener clickListenerSave = v -> {
-        // Click on Save Button
-        Log.d(TAG, "clickListenerSave onClick");
-        CheckNameAndLogIn();
-    };
-    private final OnClickListener clickListenerAbort = v -> {
-        // Click on Abort Button
-        Log.d(TAG, "clickListenerAbort onClick");
-        finish();
-    };
     private CheckBox copyImapFolderCheckBox;
 
     @SuppressLint("SetTextI18n")
@@ -395,33 +373,19 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
 
             String myTempStr = GetConfigValue(ConfigurationFieldNames.copyImapFolder);
             copyImapFolderCheckBox.setChecked(myTempStr != null && myTempStr.equals("true") && !(GetConfigValue(ConfigurationFieldNames.copyImapFolderName).isEmpty()));
-
-            Button buttonAbort = new Button(this);
-            buttonAbort.setText(R.string.cancel);
-            Log.d(TAG, "Set onclick listener abort");
-            buttonAbort.setOnClickListener(clickListenerAbort);
-            layout.addView(buttonAbort);
-            Button buttonRemove = new Button(this);
-            buttonRemove.setText(R.string.delete);
-            buttonRemove.setOnClickListener(clickListenerRemove);
-            layout.addView(buttonRemove);
-            Button buttonSave = new Button(this);
-            buttonSave.setText(R.string.save);
-            Log.d(TAG, "Set onclick listener save");
-            buttonSave.setOnClickListener(clickListenerSave);
-            layout.addView(buttonSave);
-        } else {
-            // Here we have to create a new account. There is no cancel button, Back or Up
-            // returns to the caller.
-            Button buttonView = new Button(this);
-            buttonView.setText(R.string.next);
-            buttonView.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
-            Log.d(TAG, "Set onclick listener login");
-            buttonView.setOnClickListener(clickListenerLogin);
-            layout.addView(buttonView);
         }
+
+        // Creating and editing an account use the same flow: one "Next" button, then the outcome of
+        // the connection check on the second page (ShowCheckingPage / ShowResultPage). There is no
+        // cancel button, Back or Up returns to the caller.
+        Button buttonView = new Button(this);
+        buttonView.setText(R.string.next);
+        buttonView.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        Log.d(TAG, "Set onclick listener login");
+        buttonView.setOnClickListener(clickListenerLogin);
+        layout.addView(buttonView);
 
         // Don't display keyboard when on note detail, only if user touches the screen
         getWindow().setSoftInputMode(
