@@ -36,13 +36,13 @@ import android.widget.Checkable;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import de.niendo.ImapNotes3.Data.NotesDb;
 import de.niendo.ImapNotes3.Data.OneNote;
 import de.niendo.ImapNotes3.Miscs.HtmlNote;
+import de.niendo.ImapNotes3.Miscs.SwipeRevealRow;
 import de.niendo.ImapNotes3.Miscs.Utilities;
 import de.niendo.ImapNotes3.Sync.SyncUtils;
 
@@ -120,6 +120,20 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
     public void setSortOrder(String sortOrder) {
         mUnfilteredData = null;
         mSortOrder = sortOrder;
+    }
+
+    /**
+     * Implemented by the screen that shows the list, to handle the actions a swiped-open row reveals.
+     */
+    public interface RowActionListener {
+        void onNoteDeleteRequested(@NonNull OneNote note);
+    }
+
+    @Nullable
+    private RowActionListener mRowActionListener;
+
+    public void setRowActionListener(@Nullable RowActionListener listener) {
+        mRowActionListener = listener;
     }
 
     public void setAccountName(String setAccountName) {
@@ -297,7 +311,7 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
         v.setText(text);
     }
 
-    private void setBgColor(@NonNull RelativeLayout v, @ColorInt int bgColor) {
+    private void setBgColor(@NonNull View v, @ColorInt int bgColor) {
         v.setBackgroundColor(bgColor);
     }
 
@@ -358,6 +372,27 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
             return;
         }
 
+        // The swipe row is rewired on every bind: a row that is reused by the list must never still
+        // be slid open, and its action buttons have to act on the note that is shown right now.
+        if (view instanceof SwipeRevealRow) {
+            ((SwipeRevealRow) view).concealImmediately();
+            View deleteButton = view.findViewById(R.id.deleteNoteButton);
+            if (deleteButton != null) {
+                final OneNote rowNote = dataSet instanceof OneNote ? (OneNote) dataSet : null;
+                deleteButton.setOnClickListener(rowView -> {
+                    if (mRowActionListener != null && rowNote != null) {
+                        mRowActionListener.onNoteDeleteRequested(rowNote);
+                    }
+                });
+            }
+        }
+        // The background of a note belongs to the sliding content, not to the row itself, because the
+        // action buttons underneath keep their own color.
+        View rowContent = view.findViewById(R.id.rowContent);
+        if (rowContent == null) {
+            rowContent = view;
+        }
+
         //final ViewBinder binder = mViewBinder;
         final int[] to = mTo;
         final int count = to.length;
@@ -407,7 +442,7 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
                             // time & date
                             setTxtColor((TextView) v, ColorUtils.blendARGB(txtColor, bgColorNr, 0.5f));
                         }
-                        setBgColor((RelativeLayout) view, bgColorNr);
+                        setBgColor(rowContent, bgColorNr);
 
                     } else if (v instanceof ImageView) {
                         if (data instanceof Integer) {

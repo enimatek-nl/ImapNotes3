@@ -42,6 +42,8 @@ import de.niendo.ImapNotes3.ListActivity;
 import de.niendo.ImapNotes3.Miscs.HtmlNote;
 import de.niendo.ImapNotes3.Miscs.ImapNotesResult;
 
+import org.apache.commons.io.FileUtils;
+
 import com.sun.mail.imap.AppendUID;
 import com.sun.mail.imap.IMAPFolder;
 import com.sun.mail.util.MailSSLSocketFactory;
@@ -371,12 +373,14 @@ public class SyncUtils {
         File toDelete = new File(ImapNotes3.GetSharedPrefsDir(), ImapNotes3.RemoveReservedChars(accountName) + ".xml");
         //noinspection ResultOfMethodCallIgnored
         toDelete.delete();
-        // Remove all files and sub directories
-        File[] files = ImapNotes3.GetRootDir().listFiles();
-        if (files != null)
-            for (File file : files) {
-                 if(!file.delete())
-                    Log.w(TAG, "RemoveAccount: could not delete: " + file);
+        // Remove the files and sub directories of this account only, the other accounts keep their
+        // local note files.
+        File accountDir = ImapNotes3.GetAccountDir(accountName);
+        if (accountDir.exists())
+            try {
+                FileUtils.deleteDirectory(accountDir);
+            } catch (IOException e) {
+                Log.e(TAG, "RemoveAccount: could not delete: " + accountDir, e);
             }
     }
 

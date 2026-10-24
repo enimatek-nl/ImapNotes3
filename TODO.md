@@ -270,33 +270,48 @@ account settings stay untouched on disk after a failed check.
 
 ## Phase 3 — Remember and restore the last opened account
 
+**Status:** implemented together with Phases 5 / 5b and verified on the emulator: opening an account
+stores its name in `de.niendo.ImapNotes3_preferences`, a cold start from the launcher logs
+`Restoring last account: …` and lands straight on that account’s notes list, and Back returns to the
+account overview, which stays below the list in the task stack. The stale-name branch was verified by
+pointing the preference at a non-existent account: the overview is shown and the key is dropped.
+
 ### Deliverable
 
 After a user opens an account, later app launches land in that account’s notes overview if the account still exists.
 
 ### Steps
 
-- [ ] Add a preference key, for example:
-    - [ ] `LAST_ACCOUNT_NAME`
-    - Store it in `SettingsActivity.MAIN_PREFERENCE_NAME`.
-- [ ] When `AccountListActivity` launches `ListActivity` for an account, save that account name as last opened.
-- [ ] When app starts:
-    - [ ] Load `LAST_ACCOUNT_NAME`.
-    - [ ] Verify the account still exists.
-    - [ ] If it exists, start `ListActivity` directly for that account.
-    - [ ] If it does not exist, stay on account overview.
-- [ ] Add an escape hatch / navigation behavior:
-    - [ ] Back from the restored notes list should go to the account overview.
-    - [ ] Do not trap the user in a single account.
-- [ ] If exactly one account exists, optionally open it directly by default.
-- [ ] Consider adding a debug log line using the project’s logging pattern:
-    - `Log.d(TAG, "Restoring last account: " + lastAccountName);`
+- [x] Add a preference key, for example:
+    - [x] `LAST_ACCOUNT_NAME` — implemented as `PREF_LAST_ACCOUNT_NAME = "LastAccountName"`.
+    - [x] Store it in `SettingsActivity.MAIN_PREFERENCE_NAME`.
+- [x] When `AccountListActivity` launches `ListActivity` for an account, save that account name as last opened
+      (`openAccountNotes` → `saveLastAccountName`).
+- [x] When app starts (`restoreLastAccount` in `AccountListActivity`):
+    - [x] Load the name.
+    - [x] Verify the account still exists (`getAccountsByType`).
+    - [x] If it exists, start `ListActivity` directly for that account.
+    - [x] If it does not exist, stay on account overview and remove the key.
+- [x] Add an escape hatch / navigation behavior:
+    - [x] Back from the restored notes list goes to the account overview — `openAccountNotes` uses
+          `CLEAR_TOP | SINGLE_TOP`, so the overview always stays first in the task stack.
+    - [x] The user is not trapped in one account: the overview is one Back press away and lists all accounts.
+- [x] Restoring happens only in `onCreate` and only when `savedInstanceState == null`. Doing it in
+      `onStart`/`onNewIntent` bounces forever, because opening the notes list clears the task back to the
+      overview, which would then restore the account again.
+- [ ] If exactly one account exists, optionally open it directly by default — skipped: the restore above
+      already does that for the only account, and an account that was never opened is a deliberate choice
+      by the user to look at the overview.
+- [x] Debug log line using the project’s logging pattern: `Log.d(TAG, "Restoring last account: " + lastAccountName);`
 
 ### Acceptance criteria
 
-- Opening account A, killing the app, reopening the app → app opens account A’s notes list.
-- Deleting account A and reopening the app → app returns to account overview.
-- Pressing back from notes list still lets the user choose another account.
+- [x] Opening account A, killing the app (`am force-stop`), reopening from the launcher → account A’s
+      notes list is the resumed activity.
+- [x] Account that no longer exists → account overview and the key is cleared. (Verified by rewriting
+      `LastAccountName` in the preferences file; deleting the one real account on the test device was
+      deliberately not risked.)
+- [x] Pressing back from the notes list still lets the user choose another account.
 
 ---
 
@@ -505,6 +520,11 @@ Opening Settings from an account’s notes list and going back (or up) returns t
 
 ## Phase 5 — Add swipe-to-reveal actions to note rows
 
+**Status:** implemented on the existing `ListView` (no `RecyclerView` migration) and verified on the
+emulator: a horizontal drag slides the row content over a red delete button, tapping the button closes
+the row and asks for confirmation, tapping a revealed row only closes it, vertical dragging still
+triggers the refresh, and neither scrolling nor filtering leaves a row stuck open.
+
 ### Deliverable
 
 User can swipe a note row sideways to reveal extra actions.
@@ -515,45 +535,65 @@ Use the existing `ListView` and custom row layout first. A full `RecyclerView` m
 
 ### Steps
 
-- [ ] Add a callback interface for row actions, for example:
-    - `onNoteDeleteRequested(OneNote note)`
-    - `onNoteEditRequested(OneNote note)` later
-- [ ] Modify `note_element.xml` to contain:
-    - [ ] A visible normal content area.
-    - [ ] A hidden action panel behind or beside the content.
-    - [ ] At least a delete button.
+- [x] Callback interface for row actions: `NotesListAdapter.RowActionListener` with
+      `onNoteDeleteRequested(OneNote note)`; `onNoteEditRequested` intentionally left for later.
+- [x] Modify `note_element.xml` to contain:
+    - [x] Root is now `Miscs.SwipeRevealRow` (a `FrameLayout`) with an opaque `@+id/rowContent` holding
+          the original title/date layout.
+    - [x] `@+id/rowActions` declared **first**, so it sits underneath the content and only appears while
+          the content slides away.
+    - [x] A delete button (`@+id/deleteNoteButton`, `@color/DestructiveActionColor`).
     - [ ] Optional buttons later: open, share, color, pin, archive.
-- [ ] Add swipe gesture handling:
-    - [ ] Simple `GestureDetector` + `translationX` on the row view.
-    - [ ] Reveal action buttons when the row is translated far enough.
-    - [ ] Snap back to closed state if swipe distance is too small.
-- [ ] Handle action-button clicks:
-    - [ ] Delete calls back into `ListActivity`.
-    - [ ] `ListActivity` invokes the existing delete path:
-        - `UpdateList(suid, null, null, accountName, UpdateThread.Action.Delete)`
-- [ ] Add confirmation or undo:
-    - [ ] Preferred: delete immediately and show Snackbar with Undo, closer to iOS.
-    - [ ] Acceptable first pass: show confirmation dialog.
-- [ ] Avoid opening the note editor when the row is already revealed:
-    - [ ] If action panel is open, first tap closes it.
-    - [ ] Only tap normal note area opens the editor.
-- [ ] Ensure swipe does not conflict with swipe-to-refresh:
-    - [ ] Horizontal swipe reveals actions.
-    - [ ] Vertical swipe triggers sync.
-- [ ] Ensure list recycling works:
-    - [ ] Reset row translation when rows are reused.
-    - [ ] Do not leave stale translated rows when scrolling.
+- [x] Swipe gesture handling — deliberately **not** a `GestureDetector` inside the row: a row only
+      receives move events when one of its children is clickable, so the state machine lives in
+      `Miscs/SwipeRevealListView`, which both lists use. It records the DOWN, lets the list scroll
+      normally, intercepts once the drag is horizontal past the touch slop, drags `rowContent` with
+      `translationX`, and on release snaps open (≥ half the panel) or back to closed.
+- [x] Handle action-button clicks:
+    - [x] `NotesListAdapter.bindView` re-wires `deleteNoteButton` to the `OneNote` that is bound at that
+          moment and calls `RowActionListener.onNoteDeleteRequested`.
+    - [x] `ListActivity.ConfirmAndDeleteNote` invokes the existing delete path:
+          `UpdateList(uid, null, null, accountName, UpdateThread.Action.Delete)`.
+- [x] Confirmation dialog rather than Snackbar + Undo. The existing delete moves the `.eml` into the
+      account’s `deleted/` directory and writes the DB save state, so it cannot simply be rolled back;
+      the dialog is the documented acceptable first pass.
+- [x] Avoid opening the note editor when the row is already revealed:
+    - [x] A tap while a row is open closes it — handled in `SwipeRevealListView.onTouchEvent` for UP, and
+          defensively again at the top of both item-click listeners.
+    - [x] Tapping a closed row opens the editor as before.
+- [x] No conflict with swipe-to-refresh: vertical movement past the slop is left to the list and
+      `SwipeRefreshLayout`; only a horizontal drag is intercepted (verified: a pull still logs
+      `TriggerSync`).
+- [x] List recycling: `bindView` calls `concealImmediately()`, and `SwipeRevealRow` keeps a single static
+      weak reference to the one revealed row, so scrolling/filtering cannot leave translated rows behind.
+- [x] Hidden buttons must not be tappable: the panel is only clickable while the row is revealed
+      (`setActionsTouchEnabled`), otherwise the right edge of a _closed_ row would trigger delete.
+- [x] Important gotcha found while implementing: `AbsListView` only performs an item click when the row has
+      **no explicitly focusable descendant**, and the constructor of `ImageButton` calls
+      `setFocusable(true)` whatever the layout says. Without
+      `setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS)` in `SwipeRevealRow.onFinishInflate()`, tapping
+      any row of either list did nothing at all.
 
 ### Acceptance criteria
 
-- Swiping a note row horizontally reveals a visible delete action.
-- Tapping delete removes/marks the note for deletion using the existing sync flow.
-- Tapping the rest of the row still opens the note editor.
-- Scrolling the list does not leave stuck swipe states.
+- [x] Swiping a note row horizontally reveals a visible delete action (verified: `rowContent` slides to
+      `[0,210][912,320]`, the button exposed at `[912,210][1080,320]`).
+- [x] Tapping the delete action closes the row, shows "Delete note", and YES would route through
+      `UpdateThread.Action.Delete`; NO was used during testing so no note was lost (39 `.eml` files, empty
+      `deleted/`).
+- [x] Tapping the rest of the row still opens the note editor (verified: `NoteDetailActivity` resumed).
+- [x] Scrolling the list does not leave stuck swipe states (verified: no translated rows after scrolling
+      up and down).
 
 ---
 
 ## Phase 5b — Account rows: clickable shelf items with swipe actions
+
+**Status:** implemented and verified on the emulator, sharing the Phase 5 mechanism. Account **delete**
+could only be verified up to the confirmation dialog: the single account on the test device is the
+user’s real read-only mailbox, and a throwaway second account cannot be created because the setup flow
+requires a live IMAP password. The `RemoveAccount` scoping fix is therefore code-reviewed, not
+exercised end to end.
 
 ### Deliverable
 
@@ -563,41 +603,46 @@ account edit screen (Phase 2c) and lives only here, iOS-style.
 
 ### Steps
 
-- [ ] **Fix `SyncUtils.RemoveAccount` before exposing delete prominently.** It currently deletes **every**
-      file under `ImapNotes3.GetRootDir()` — that wipes the local caches of _all_ other accounts, not just
-      the one being removed. It must delete only the removed account’s directory
-      (`GetAccountDir(accountName)`, incl. `new/` and `deleted/`), alongside the existing `ClearDb` and
-      shared-prefs cleanup.
-- [ ] In `AccountListActivity` / `account_element.xml`, make the whole row tappable to open the scoped
-      notes list (currently only parts of the row react), and add a horizontal swipe/reveal: content
-      slides sideways to reveal the action buttons underneath.
-- [ ] Reveal two actions: edit (opens `AccountConfigurationActivity` with `Actions.EDIT_ACCOUNT`, i.e. the
-      Phase 2c flow) and a red-tinted delete. For the red, do **not** reuse the note-background `@color/red`
-      (it inverts in dark mode); add a dedicated `DestructiveActionColor` in both `values/colors.xml` and
-      `values-night/colors-night.xml`, like `ResultOkColor` / `ResultFailedColor` in Phase 2b.
-- [ ] Delete should ask for confirmation (or delete immediately + Snackbar with Undo, matching the note
-      delete UX from Phase 5) and then call `AccountManager.removeAccount` + `SyncUtils.RemoveAccount`.
-- [ ] Reuse the same reveal mechanism as Phase 5 for note rows where possible, so both lists behave alike
-      (and share the recycling/reset pitfalls listed in the Risk notes).
-- [ ] Only one row revealed at a time; tapping elsewhere closes the revealed row; vertical scrolling must
-      not trigger the reveal.
+- [x] **Fixed `SyncUtils.RemoveAccount` first.** It listed and deleted every file under
+      `ImapNotes3.GetRootDir()`, i.e. the local caches of **all** accounts. It now removes only
+      `ImapNotes3.GetAccountDir(accountName)` (including `new/` and `deleted/`) with
+      `FileUtils.deleteDirectory`, keeping the existing `ClearDb` and shared-prefs cleanup. It is invoked
+      from `ImapNotesAuthenticatorService.Authenticator.getAccountRemovalAllowed`, so the UI only calls
+      `AccountManager.removeAccount`.
+- [x] Whole row tappable: `account_list.xml` uses `SwipeRevealListView` and `account_element.xml` has the
+      `rowActions` / `rowContent` pair. (The tap did nothing until the focusable-row issue described in
+      Phase 5 was fixed — that was the blocker here, not the click wiring.)
+- [x] Two revealed actions: edit (`ic_action_user_edit` on the new `@color/EditActionColor`, opens the
+      Phase 2c `Actions.EDIT_ACCOUNT` flow) and delete (`ic_action_delete` on the new
+      `@color/DestructiveActionColor`, light and dark variants added next to `ResultOkColor` /
+      `ResultFailedColor`; the note-background `@color/red` was left untouched).
+- [x] Delete asks for confirmation (`delete_account` plus the new
+      `are_you_sure_you_wish_to_delete_the_account`, base English only — the wording states that the notes
+      stay in the mailbox on the server) and then `AccountManager.removeAccount(...)` plus
+      `clearLastAccountName`, so the Phase 3 restore falls back to the overview.
+- [x] Same reveal mechanism as Phase 5 (shared `SwipeRevealRow` / `SwipeRevealListView`), including the
+      recycling reset in the adapter’s `getView`.
+- [x] Only one row revealed at a time, a tap elsewhere closes it, vertical scrolling never reveals.
+- [x] Long-press-to-edit was removed from `AccountListActivity`; the revealed edit action replaces it.
 
 ### Acceptance criteria
 
-- [ ] Tapping an account row opens that account’s notes list.
-- [ ] Swiping a row sideways reveals edit and (red) delete.
-- [ ] Edit takes the user through the Phase 2c form → Next → check → result flow.
-- [ ] Delete removes the account, and after it the _other_ accounts still have their local note caches
-      intact (this is the `RemoveAccount` fix).
-- [ ] Scrolling the list does not leave rows stuck revealed.
+- [x] Tapping an account row opens that account’s notes list (verified: `onItemClick` →
+      `openAccountNotes`, `ListActivity` resumed).
+- [x] Swiping a row sideways reveals edit and red delete (verified: `rowContent` slides to
+      `[0,210][702,442]`, buttons exposed at `[702,210][1080,442]`).
+- [x] Edit takes the user to the Phase 2c form for that account (verified: `AccountConfigurationActivity`
+      resumed; Back returns to the overview with the account untouched).
+- [ ] Delete removes the account while the other accounts keep their local caches — **verified only up to
+      the confirmation dialog** (see Status); NO leaves the account, its 39 `.eml` files and the
+      `AccountManager` entry intact.
+- [x] Scrolling the list does not leave rows stuck revealed.
 
 ### Notes / remaining
 
-- Editing an account is currently a **long-press** on the row in `AccountListActivity`
-  (`setOnItemLongClickListener` → `editAccount`); replace it with the revealed edit action once swipe
-  works.
-- The listActivity-side `editAccountButton` / account spinner belong to the unscoped list and stay until
-  Phase 9.
+- Long-press editing is gone; the revealed edit action is the only path now.
+- `ListActivity` still carries the orphaned `ResultCodeRemoveAccount` plumbing from the legacy spinner
+  screen, which nothing sets any more — cleanup deferred to Phase 9.
 
 ---
 
@@ -746,10 +791,12 @@ Pick them one by one:
 6. [x] Phase 4b: handle a read-only mailbox and fix the empty scoped list (found while testing Phase 4).
 7. [x] Phase 4c: remove the “Accounts” menu entry and speed up a refresh.
 8. [x] Phase 4d: Up from Settings returned an unscoped notes list (found while testing).
-9. Phase 3: persist last opened account.
+9. [x] Phase 3: persist last opened account (implemented together with 11 and 12, so the overview could
+       be tested end to end).
 10. [x] Phase 2c: account edit uses the add flow (check + result page).
-11. Phase 5: add swipe actions to note rows.
-12. Phase 5b: account rows as shelf items with swipe actions (fix `SyncUtils.RemoveAccount` first).
+11. [x] Phase 5: add swipe actions to note rows.
+12. [x] Phase 5b: account rows as shelf items with swipe actions (`SyncUtils.RemoveAccount` scoped to the
+        removed account only).
 13. Phase 6: polish account overview.
 14. Phase 7: polish notes overview.
 15. Phase 9: delete the unscoped notes list once share intents are routed.
@@ -761,9 +808,13 @@ Pick them one by one:
 
 - The share-intent flow is currently tied to `ListActivity`. Be careful when moving launcher filters.
   Phase 9 covers re-routing it before the unscoped list is deleted.
-- `SyncUtils.RemoveAccount` currently deletes _all_ local files under the app root dir, not just the
-  removed account’s. Fix that before making delete easy to reach (Phase 5b).
+- `SyncUtils.RemoveAccount` used to delete _all_ local files under the app root dir, not just the removed
+  account’s. Fixed in Phase 5b; worth an end-to-end check once a second account can be created on a device.
 - The existing `ListActivity` uses static state and account listeners; moving navigation around should not break account updates.
-- Swipe behavior on `ListView` can fight with recycling and swipe-to-refresh.
+- Swipe behavior on `ListView` can fight with recycling and swipe-to-refresh. Two things cost the most
+  time in Phase 5: the gesture has to be recognized in a `ListView` subclass (a plain row never sees the
+  move events unless one of its children is clickable), and a row containing an `ImageButton` needs
+  `setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS)`, otherwise `AbsListView` refuses to perform the
+  item click and rows stop reacting to taps.
 - Deleting notes must continue to route through the existing delete/sync mechanism so server state stays correct.
 - New strings should be added only in base English `strings.xml`; translations should come through Weblate.

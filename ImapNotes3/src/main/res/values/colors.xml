@@ -32,6 +32,11 @@
     <color name="ResultOkColor">#1B7F5C</color>
     <color name="ResultFailedColor">#B3261E</color>
 
+    <!-- Backgrounds of the swipe-revealed row actions; must stay readable under a white icon in
+         both modes, so they are separate from the note background colors. -->
+    <color name="DestructiveActionColor">#B3261E</color>
+    <color name="EditActionColor">#5B6472</color>
+
     <item name="ColorMode" translatable="false" type="string">light</item>>
 
 </resources>

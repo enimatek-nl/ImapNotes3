@@ -9,6 +9,8 @@
     <string name="about">About</string>
     <string name="search">Search</string>
     <string name="account_removed">Account has been removed</string>
+    <string name="delete_account">Delete account</string>
+    <string name="are_you_sure_you_wish_to_delete_the_account">Are you sure you wish to delete the account? Its notes stay in the mailbox on the server, only the copy stored on this device is removed.</string>
     <string name="quotation_marks_not_allowed">Quotation marks are not allowed in account name</string>
     <string name="remove">Remove</string>
     <string name="save">Save</string>

@@ -30,6 +30,7 @@ import android.accounts.AccountManager;
 import android.accounts.OnAccountsUpdateListener;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -69,6 +70,7 @@ import de.niendo.ImapNotes3.Data.NotesDb;
 import de.niendo.ImapNotes3.Data.OneNote;
 import de.niendo.ImapNotes3.Miscs.BackupRestore;
 import de.niendo.ImapNotes3.Miscs.HtmlNote;
+import de.niendo.ImapNotes3.Miscs.SwipeRevealRow;
 import de.niendo.ImapNotes3.Miscs.SyncThread;
 import de.niendo.ImapNotes3.Miscs.UpdateThread;
 import de.niendo.ImapNotes3.Miscs.Utilities;
@@ -307,6 +309,8 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                 new String[]{OneNote.TITLE, OneNote.DATE},
                 new int[]{R.id.noteTitle, R.id.noteLastChange},
                 OneNote.BGCOLOR);
+        // The swipe actions of a note row are handled here, in the same way the editor does it.
+        this.listToView.setRowActionListener(this::ConfirmAndDeleteNote);
 
         listview = findViewById(R.id.notesList);
         listview.setAdapter(this.listToView);
@@ -318,6 +322,11 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         // When item is clicked, we go to NoteDetailActivity
         listview.setOnItemClickListener((parent, widget, selectedNote, rowId) -> {
             Log.d(TAG, "onItemClick");
+            // If a row is slid open, a tap anywhere closes it instead of opening the editor.
+            if (SwipeRevealRow.concealRevealedRow()) {
+                Log.d(TAG, "onItemClick: closed the revealed row");
+                return;
+            }
             Intent toDetail;
 
             String saveState = storedNotes.GetSaveState(noteList.get(selectedNote).GetUid(), noteList.get(selectedNote).GetAccount());
@@ -520,6 +529,26 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                         getApplicationContext(),
                         action).execute();
             }
+    }
+
+    /**
+     * Asks before a note is deleted, and then uses the same delete path as the button of the editor.
+     * A Snackbar with Undo is not offered: deleting moves the local mail file to the deleted
+     * directory and updates the database, which cannot simply be rolled back.
+     */
+    private void ConfirmAndDeleteNote(@NonNull OneNote note) {
+        Log.d(TAG, "ConfirmAndDeleteNote: " + note.GetUid() + " " + note.GetAccount());
+        // The row closes as the action is tapped, so no row stays open behind the dialog.
+        SwipeRevealRow.concealRevealedRow();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_note)
+                .setMessage(R.string.are_you_sure_you_wish_to_delete_the_note)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton(R.string.yes, (dialog, which) ->
+                        UpdateList(note.GetUid(), null, null, note.GetAccount(),
+                                UpdateThread.Action.Delete))
+                .setNegativeButton(R.string.no, null)
+                .show();
     }
 
     private void UpdateList(
