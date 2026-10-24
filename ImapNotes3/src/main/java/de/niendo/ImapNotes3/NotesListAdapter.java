@@ -27,6 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
 
+import android.text.Html;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -48,12 +49,15 @@ import de.niendo.ImapNotes3.Sync.SyncUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+
+import javax.mail.Message;
 
 /**
  * An easy adapter to map static data to views defined in an XML file. You can specify the data
@@ -234,6 +238,90 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
         return (matcher.find());
     }
 
+    // The snippet of a note has to be read from its file, so the results are cached. The key holds
+    // the modification time of the file, which means an edited note is read again by itself. Only
+    // the UI thread uses the cache (bindView), so it does not have to be synchronised.
+    private static final int SNIPPET_CACHE_SIZE = 400;
+    private static final int SNIPPET_MAX_LENGTH = 200;
+    @NonNull
+    private static final Map<String, String> snippetCache = new LinkedHashMap<String, String>(64, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+            return size() > SNIPPET_CACHE_SIZE;
+        }
+    };
+
+    /**
+     * The text of a note that comes after its title, as it is shown in the second line of the row.
+     *
+     * @param note the note of a list row
+     * @return the text of the note behind the title, empty when there is none or no local file
+     */
+    @NonNull
+    private static String GetSnippetOfNote(@NonNull OneNote note) {
+        File directory = ImapNotes3.GetAccountDir(note.GetAccount());
+        String uid = note.GetUid();
+        if (uid.startsWith("-")) {
+            // A note that has not been uploaded yet lives in the "new" subdirectory of the account.
+            uid = uid.substring(1);
+            directory = new File(directory, "new");
+        }
+        File mailFile = SyncUtils.GetNoteFile(directory, uid);
+        if (mailFile == null) {
+            // The note has no local file, for example because it has only been seen on the server.
+            return "";
+        }
+        String cacheKey = mailFile.getAbsolutePath() + ":" + mailFile.lastModified();
+        String snippet = snippetCache.get(cacheKey);
+        if (snippet == null) {
+            snippet = ReadSnippet(mailFile, note.GetTitle());
+            snippetCache.put(cacheKey, snippet);
+        }
+        return snippet;
+    }
+
+    /**
+     * Reads a note file and collects the lines that follow the title line.
+     */
+    @NonNull
+    private static String ReadSnippet(@NonNull File mailFile, @NonNull String title) {
+        Message message = SyncUtils.ReadMailFromFile(mailFile);
+        if (message == null) {
+            return "";
+        }
+        String html = HtmlNote.GetNoteFromMessage(message).text;
+        if (html == null || html.isEmpty()) {
+            return "";
+        }
+        // fromHtml keeps the lines of the note, which is what tells the title apart from the rest of
+        // the note. Collapsing the html to text first would lose those lines.
+        String[] lines = Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY).toString().split("\n");
+        String wantedTitle = title.replace("#", "").trim();
+        StringBuilder text = new StringBuilder();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (text.length() == 0
+                    && (trimmed.replace("#", "").trim().equals(wantedTitle) || wantedTitle.isEmpty())) {
+                // The first line is the title, and the title is already the first line of the row.
+                continue;
+            }
+            if (text.length() > 0) {
+                text.append(' ');
+            }
+            text.append(trimmed);
+            if (text.length() >= SNIPPET_MAX_LENGTH) {
+                break;
+            }
+        }
+        String snippet = text.toString();
+        return snippet.length() > SNIPPET_MAX_LENGTH
+                ? snippet.substring(0, SNIPPET_MAX_LENGTH)
+                : snippet;
+    }
+
 // --Commented out by Inspection START (12/2/16 9:22 PM):
 //    /**
 //     * Returns the {@link ViewBinder} used to bind data to views.
@@ -393,6 +481,11 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
             rowContent = view;
         }
 
+        // The text behind the title is not in the database, it comes from the note file itself.
+        if (dataSet instanceof OneNote) {
+            ((OneNote) dataSet).SetSnippet(GetSnippetOfNote((OneNote) dataSet));
+        }
+
         //final ViewBinder binder = mViewBinder;
         final int[] to = mTo;
         final int count = to.length;
@@ -435,12 +528,12 @@ public class NotesListAdapter extends BaseAdapter implements Filterable {
                         // Note: keep the instanceof TextView check at the bottom of these
                         // ifs since a lot of views are TextViews (e.g. CheckBoxes).
                         setViewText((TextView) v, text);
-                        if (i == 0) {
-                            // note name
-                            setTxtColor((TextView) v, txtColor);
-                        } else {
-                            // time & date
+                        if (to[i] == R.id.noteSnippet) {
+                            // the text behind the title is secondary, so it stays faded
                             setTxtColor((TextView) v, ColorUtils.blendARGB(txtColor, bgColorNr, 0.5f));
+                        } else {
+                            // note name and date
+                            setTxtColor((TextView) v, txtColor);
                         }
                         setBgColor(rowContent, bgColorNr);
 

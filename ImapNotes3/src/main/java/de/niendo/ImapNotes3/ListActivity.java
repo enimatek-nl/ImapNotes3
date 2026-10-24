@@ -306,8 +306,8 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         this.listToView = new NotesListAdapter(
                 this,
                 this.noteList,
-                new String[]{OneNote.TITLE, OneNote.DATE},
-                new int[]{R.id.noteTitle, R.id.noteLastChange},
+                new String[]{OneNote.TITLE, OneNote.DATE, OneNote.SNIPPET},
+                new int[]{R.id.noteTitle, R.id.noteDate, R.id.noteSnippet},
                 OneNote.BGCOLOR);
         // The swipe actions of a note row are handled here, in the same way the editor does it.
         this.listToView.setRowActionListener(this::ConfirmAndDeleteNote);

@@ -40,6 +40,11 @@ public class OneNote extends HashMap<String, String> {
     public static final String UID = "uid";
     public static final String ACCOUNT = "account";
     public static final String SAVE_STATE = "save_state";
+    /**
+     * The first text of the note behind its title, worked out from the note file by the list adapter
+     * and not kept in the database.
+     */
+    public static final String SNIPPET = "snippet";
 
     /**
      *
@@ -101,6 +106,16 @@ public class OneNote extends HashMap<String, String> {
 
     public void SetState(String saveState) {
         this.put(SAVE_STATE, saveState);
+    }
+
+    @NonNull
+    public String GetSnippet() {
+        String snippet = this.get(SNIPPET);
+        return snippet == null ? "" : snippet;
+    }
+
+    public void SetSnippet(String snippet) {
+        this.put(SNIPPET, snippet);
     }
 
     @NonNull

@@ -28,11 +28,13 @@ import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,6 +60,12 @@ public final class Utilities {
     public static String internalDateFormatString = "yyyy-MM-dd HH:mm:ss";
     @NonNull
     public static SimpleDateFormat internalDateFormat = new SimpleDateFormat(internalDateFormatString, Locale.ROOT);
+    /**
+     * The date shown in the note list. Deliberately a fixed format (day first) and not the locale
+     * short format, which would differ per device and also bring the time along.
+     */
+    @NonNull
+    public static final String shortDateFormatString = "dd/MM/yyyy";
     /**
      * The notes have a time stamp associated with time and this is stored as a string on the
      * server so we must define a fixed format for it.
@@ -88,6 +96,21 @@ public final class Utilities {
             return (Integer.parseInt(name.replace(" ", "").replace("#", ""), 16));
         }
         return context.getResources().getColor(getColorIdByName(name), context.getTheme());
+    }
+
+    /**
+     * Formats a date the way the note list shows it: day, month, year, no time.
+     *
+     * @param date the moment to format, may be null when a date could not be parsed
+     * @return the formatted date, an empty string if there is nothing to show
+     */
+    @NonNull
+    public static String GetShortDateString(@Nullable Date date) {
+        if (date == null) {
+            return "";
+        }
+        // SimpleDateFormat is not thread safe, so it is not shared like internalDateFormat is.
+        return new SimpleDateFormat(shortDateFormatString, Locale.ROOT).format(date);
     }
 
     public static String getValueFromJSON(String text, String key) {

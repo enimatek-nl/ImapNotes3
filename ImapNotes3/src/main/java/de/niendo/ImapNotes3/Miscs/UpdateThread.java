@@ -43,7 +43,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -205,8 +204,7 @@ typesafe.  Make them final to prevent accidental reuse.
                 storedNotes.InsertANoteInDb(currentNote);
 
                 // Add note to noteList but change date format before
-                //DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(applicationContext);
-                String sdate = DateFormat.getDateTimeInstance().format(date);
+                String sdate = Utilities.GetShortDateString(date);
                 currentNote.SetDate(sdate);
                 indexToDelete = getIndexByNumber(oldSuid);
                 //throw new IllegalStateException("testtest");
@@ -263,8 +261,7 @@ typesafe.  Make them final to prevent accidental reuse.
                         storedNotes.InsertANoteInDb(currentNote);
 
                         // Add note to noteList but change date format before
-                        //DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(applicationContext);
-                        String sdate = DateFormat.getDateTimeInstance().format(date);
+                        String sdate = Utilities.GetShortDateString(date);
                         currentNote.SetDate(sdate);
                         indexToDelete = -1;
                         return true;

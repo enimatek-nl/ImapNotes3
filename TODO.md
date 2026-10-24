@@ -687,13 +687,36 @@ The account’s note list feels closer to Apple Notes’ folder view.
     - [ ] Account/folder name.
     - [ ] Search action.
 - [ ] Keep floating `+` note button.
-- [ ] Make note rows visually similar:
+- [x] Make note rows visually similar:
+    - [x] Same padding and text sizes as the rows of the account overview.
+    - [x] Title on its own line, same size as the account name of an account row.
+    - [x] Second line: date in short form, then the text that follows the title in the note.
     - [ ] Bold title.
-    - [ ] Smaller timestamp line.
-    - [ ] Optional first-line snippet beneath title.
-- [ ] Consider using note background color as a subtle row background.
+    - [x] Smaller timestamp line.
+    - [x] Optional first-line snippet beneath title.
+- [x] Consider using note background color as a subtle row background.
 - [ ] Consider grouping by date sections later.
 - [ ] Keep sort options accessible, but less prominent than iOS-style actions.
+
+> **Status (rows, first pass).** `note_element.xml` now mirrors `account_element.xml`: the row is
+> `wrap_content` with `minHeight="64dp"` and 16dp/10dp padding, `noteTitle` uses
+> `?android:attr/textAppearanceLarge` (the hard-coded `22dp` and the odd margins are gone). The
+> second line is a horizontal pair: `noteDate` in the normal text colour followed by `noteSnippet`
+> (`layout_weight=1`, one line, ellipsised) in the faded colour the date used to have.
+>
+> - The date is the new `Utilities.GetShortDateString()` (`dd/MM/yyyy`, a fixed day-first pattern —
+>   the device short format would be locale dependent and carries the time). It replaced
+>   `DateFormat.getDateTimeInstance()` in `NotesDb.GetStoredNotes` and in the two places in
+>   `UpdateThread` that refresh the date of a row after saving.
+> - The snippet is not in the database: `NotesListAdapter` reads the note file
+>   (`SyncUtils.GetNoteFile`, a small new helper that also `ReadMailFromNoteFile` now uses), takes
+>   the lines after the title line of `Html.fromHtml()` output and caches the result per file and
+>   modification time, so an edited note is read again by itself. Notes without a local file show no
+>   snippet. The cache is bounded (400 entries, 200 characters per snippet).
+> - `OneNote` gained the `SNIPPET` key, and `ListActivity` maps `{TITLE, DATE, SNIPPET}` to
+>   `{noteTitle, noteDate, noteSnippet}`.
+> - Not covered by the emulator check: the "All" variant of a scoped list, which appends the account
+>   name to the date string and needs a second account to be reachable at all.
 
 ### Acceptance criteria
 

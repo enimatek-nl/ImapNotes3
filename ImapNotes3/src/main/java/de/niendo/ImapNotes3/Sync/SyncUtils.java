@@ -106,6 +106,30 @@ public class SyncUtils {
     }
 
     /**
+     * Finds the file a note is stored in, without reading it. Used by the note list, which needs the
+     * modification time of the file to know when a cached part of the note is out of date.
+     *
+     * @param uid     ID of the message as created by the IMAP server
+     * @param nameDir Directory of the account the message belongs to
+     * @return the file, or null when the note is not stored locally
+     */
+    @Nullable
+    public static File GetNoteFile(@NonNull File nameDir,
+                                   @NonNull String uid) {
+        File mailFile = new File(nameDir, Utilities.addMailExt(uid));
+        if (mailFile.exists()) {
+            return mailFile;
+        }
+        // old: only UID is used
+        mailFile = new File(nameDir, uid);
+        if (mailFile.exists()) {
+            return mailFile;
+        }
+        Log.e(TAG, "GetNoteFile: file not found.." + mailFile);
+        return null;
+    }
+
+    /**
      * @param uid     ID of the message as created by the IMAP server
      * @param nameDir Name of the account with which this message is associated, used to find the
      *                directory in which it is stored.
@@ -116,18 +140,9 @@ public class SyncUtils {
                                                @NonNull String uid) {
         Log.d(TAG, "ReadMailFromFile: " + nameDir.getPath() + " " + Utilities.addMailExt(uid));
 
-        File mailFile;
-        mailFile = new File(nameDir, Utilities.addMailExt(uid));
-        if (!mailFile.exists()) {
-            // old: only UID is used
-            mailFile = new File(nameDir, uid);
-            if (!mailFile.exists()) {
-                mailFile = new File(nameDir, uid);
-                if (!mailFile.exists()) {
-                    Log.e(TAG, "ReadMailFromFile: file not found.." + mailFile);
-                    return null;
-                }
-            }
+        File mailFile = GetNoteFile(nameDir, uid);
+        if (mailFile == null) {
+            return null;
         }
         return (ReadMailFromFile(mailFile));
     }

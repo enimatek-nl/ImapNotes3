@@ -32,7 +32,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -287,13 +286,7 @@ public class NotesDb extends SQLiteOpenHelper {
                     }
                     //DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(this.ctx);
                     //String sdate = dateFormat.format(date);
-                    String sdate;
-                    try {
-                        sdate = DateFormat.getDateTimeInstance().format(date);
-                    } catch (Exception e) {
-                        Log.w(TAG, "getDateTimeInstance failed for : " + date, e);
-                        sdate = "?";
-                    }
+                    String sdate = Utilities.GetShortDateString(date);
                     if (accountName.isEmpty()) {
                         sdate = sdate + "  (" + resultPointer.getString(AccountNameIndex) + ")";
                     }

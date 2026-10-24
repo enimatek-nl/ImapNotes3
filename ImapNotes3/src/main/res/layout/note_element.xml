@@ -1,12 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<!--This layout displays the title and time stamp of a single note. Swiping the row sideways slides
-    the content away and reveals the delete action underneath, like the note list in iOS Notes.
+<?xml version="1.0" encoding="utf-8" ?>
+<!--This layout displays one note of the note list: its title, the date of the most recent edit and
+    the text that follows the title. The paddings and the text sizes follow account_element.xml so
+    that both lists of the app look alike. Swiping the row sideways slides the content away and
+    reveals the delete action underneath, like the note list in iOS Notes.
     The two ids rowActions / rowContent are required by SwipeRevealRow. -->
-<de.niendo.ImapNotes3.Miscs.SwipeRevealRow xmlns:android="http://schemas.android.com/apk/res/android"
+<de.niendo.ImapNotes3.Miscs.SwipeRevealRow
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="42dp"
-    android:padding="0dp">
+    android:layout_height="wrap_content"
+>
 
     <!-- Declared first, so it is drawn behind the content and only becomes visible while sliding. -->
     <LinearLayout
@@ -14,7 +16,8 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="end"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+    >
 
         <ImageButton
             android:id="@+id/deleteNoteButton"
@@ -24,46 +27,62 @@
             android:contentDescription="@string/delete"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_delete"
-            android:tint="@android:color/white" />
+            android:tint="@android:color/white"
+        />
     </LinearLayout>
 
-    <RelativeLayout
+    <LinearLayout
         android:id="@+id/rowContent"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="64dp"
+        android:background="?android:attr/colorBackground"
         android:orientation="vertical"
-        android:padding="0dp">
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp"
+    >
 
-        <!-- The notes are listed in most recently edited order using the first line as the title-->
+        <!-- The notes are listed in most recently edited order using the first line as the title -->
         <TextView
             android:id="@+id/noteTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_marginLeft="5dp"
-            android:layout_marginEnd="40dp"
-            android:layout_marginTop="-4dp"
-            android:elevation="0dp"
+            android:ellipsize="end"
             android:maxLines="1"
-            android:scrollHorizontally="false"
             android:text="@string/note_title"
-            android:textSize="22dp"
-            android:background="@android:color/transparent"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            android:textAppearance="?android:attr/textAppearanceLarge"
+        />
 
-        <!-- This text view is used to display the date and time of the most recent edit. -->
-        <TextView
-            android:id="@+id/noteLastChange"
-            android:layout_width="wrap_content"
+        <!-- Second line: the date of the last edit, then the rest of the note filling the line. -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_marginLeft="20dp"
-            android:layout_marginBottom="0dp"
-            android:elevation="-1dp"
-            android:text="@string/note_last_change"
-            android:textSize="14dp"
-            android:textAppearance="?android:attr/textAppearanceSmall" />
+            android:orientation="horizontal"
+        >
 
-    </RelativeLayout>
+            <TextView
+                android:id="@+id/noteDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="@string/note_last_change"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+            />
+
+            <TextView
+                android:id="@+id/noteSnippet"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+            />
+        </LinearLayout>
+
+    </LinearLayout>
 
 </de.niendo.ImapNotes3.Miscs.SwipeRevealRow>
