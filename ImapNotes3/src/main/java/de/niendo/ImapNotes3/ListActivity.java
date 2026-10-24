@@ -55,16 +55,10 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemSelectedListener;
-import android.widget.ArrayAdapter;
 import android.widget.Filter;
 import android.widget.Filterable;
-import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.SearchView;
-import android.widget.Spinner;
 
 import de.niendo.ImapNotes3.Data.NotesDb;
 import de.niendo.ImapNotes3.Data.OneNote;
@@ -94,20 +88,17 @@ import java.util.regex.PatternSyntaxException;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-public class ListActivity extends AppCompatActivity implements BackupRestore.INotesRestore, OnItemSelectedListener, Filterable, SimpleDialog.OnDialogResultListener, UpdateThread.FinishListener {
+public class ListActivity extends AppCompatActivity implements BackupRestore.INotesRestore, Filterable, SimpleDialog.OnDialogResultListener, UpdateThread.FinishListener {
     private static final int SEE_DETAIL = 2;
     public static final int DELETE_BUTTON = 3;
     private static final int NEW_BUTTON = 4;
-    private static final int EDIT_ACCOUNT = 5;
     private static final int EDIT_BUTTON = 6;
-    private static final int ADD_ACCOUNT = 7;
     private static final int SELECT_ARCHIVE_FOR_RESTORE = 8;
     public static final int EDIT_SETTINGS = 9;
 
     public static final int ResultCodeSuccess = 1;
     public static final int ResultCodeMakeArchive = 2;
     public static final int ResultCodeRestoreArchive = 3;
-    public static final int ResultCodeRemoveAccount = 4;
     public static final int ResultCodeNeutral = 0;
     public static final int ResultCodeError = -1;
 
@@ -120,27 +111,20 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
     public static final String REFRESH_TAGS = "REFRESH_TAGS";
     public static final String SYNCED_ERR_MSG = "SYNCED_ERR_MSG";
     private static final String DELETE_ITEM_NUM_IMAP = "DELETE_ITEM_NUM_IMAP";
-    private static final String ACCOUNTSPINNER_POS = "ACCOUNTSPINNER_POS";
     private static final String SORT_BY_DATE = "SORT_BY_DATE";
     private static final String SORT_BY_TITLE = "SORT_BY_TITLE";
     private static final String SORT_BY_COLOR = "SORT_BY_COLOR";
     private static final String DLG_FILTER_HASHTAG = "DLG_FILTER_HASHTAG";
 
     private Intent intentActionSend;
-    @Nullable
-    private String requestedAccountName;
-    // Set when the list was opened for a single account from AccountListActivity.
-    // It outlives requestedAccountName so the screen keeps its scope after a rotation
-    // or when returning from the note editor.
+    // Set when the list was opened for a single account from AccountListActivity.  The list only ever
+    // shows one account, so this is the scope of the whole screen.  It outlives the launch intent so
+    // the scope survives a rotation or returning from the note editor.
     @Nullable
     private String scopedAccountName;
-    // Set by the "All" menu item while the list is account-scoped.
-    private boolean showingAllAccounts = false;
     private ArrayList<OneNote> noteList;
     private NotesListAdapter listToView;
-    private ArrayAdapter<String> spinnerList;
     private static final String AUTHORITY = Utilities.PackageName + ".provider";
-    private Spinner accountSpinner;
     private static AccountManager accountManager;
     @Nullable
     private static NotesDb storedNotes = null;
@@ -154,18 +138,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
     // Ensure that we never have to check for null by initializing reference.
     @NonNull
     private static Account[] accounts = new Account[0];
-    private final OnClickListener clickListenerEditAccount = v -> {
-        String accountName = getSelectedAccountName();
-        if (accountName.isEmpty()) {
-            ImapNotes3.ShowMessage(R.string.select_one_account, accountSpinner, 3);
-            return;
-        }
-
-        Intent res = new Intent(ListActivity.this, AccountConfigurationActivity.class);
-        res.putExtra(AccountConfigurationActivity.ACTION, AccountConfigurationActivity.Actions.EDIT_ACCOUNT);
-        res.putExtra(AccountConfigurationActivity.ACCOUNTNAME, accountName);
-        startActivityForResult(res, ListActivity.EDIT_ACCOUNT);
-    };
     private static final String TAG = "IN_Listactivity";
     //@Nullable
     private ListView listview;
@@ -249,7 +221,7 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
 
 
     @Override
-    protected void onNewIntent(Intent intent) {
+    protected void onNewIntent(@NonNull Intent intent) {
         super.onNewIntent(intent);
         Log.d(TAG, "onNewIntent");
         String accountName = intent.getStringExtra(EDIT_ITEM_ACCOUNTNAME);
@@ -262,11 +234,9 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         }
         setIntent(intent);
         scopedAccountName = intent.getStringExtra(EDIT_ITEM_ACCOUNTNAME);
-        requestedAccountName = scopedAccountName;
-        showingAllAccounts = false;
         if (actionMenu != null) {
             UpdateScopeUi();
-            applyRequestedAccountToSpinner();
+            RefreshScopedList();
         }
     }
 
@@ -280,26 +250,17 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         Intent startIntent = getIntent();
         if (startIntent != null) {
             scopedAccountName = startIntent.getStringExtra(EDIT_ITEM_ACCOUNTNAME);
-            requestedAccountName = scopedAccountName;
         }
         setContentView(R.layout.main);
         getSupportActionBar().setElevation(0); // or other
         getSupportActionBar().setBackgroundDrawable(new ColorDrawable(getColor(R.color.ActionBgColor)));
 
-        this.accountSpinner = findViewById(R.id.accountSpinner);
-        UpdateScopeUi();
-        ListActivity.accountList = new ArrayList<>();
-
-        this.accountSpinner.setOnItemSelectedListener(this);
         ImapNotes3.setContent(findViewById(android.R.id.content));
 
+        ListActivity.accountList = new ArrayList<>();
         ListActivity.accountManager = AccountManager.get(getApplicationContext());
         ListActivity.accountManager.addOnAccountsUpdatedListener(
                 new AccountsUpdateListener(), null, true);
-
-        spinnerList = new ArrayAdapter<>
-                (this, R.layout.account_spinner_item, ListActivity.accountList);
-        accountSpinner.setAdapter(spinnerList);
 
         this.noteList = new ArrayList<>();
 
@@ -365,9 +326,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
             }
         });
 
-        ImageButton editAccountButton = findViewById(R.id.editAccountButton);
-        editAccountButton.setOnClickListener(clickListenerEditAccount);
-
         mObserver = new ContentObserver(new Handler(Looper.getMainLooper())) {
             public void onChange(boolean selfChange) {
                 Log.d(TAG, "ContentObserver.OnChange");
@@ -379,21 +337,8 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                 String errorMessage = ImapNotes3.intent.getStringExtra(SYNCED_ERR_MSG);
                 // SyncInterval syncInterval = SyncInterval.from(ImapNotes3.intent.getStringExtra(SYNCINTERVAL));
                 if (accountName.equals(getSelectedAccountName())) {
-                    /*
-                    if (isSynced) {
-                        Date date = new Date();
-                        String sdate;
-                        try {
-                            sdate = DateFormat.getDateTimeInstance().format(date);
-                        } catch (Exception e) {
-                            Log.e(TAG, "getDateTimeInstance failed: " + date, e);
-                            sdate = "";
-                        }
-                        //ImapNotes3.ShowMessage(getText(R.string.Last_sync) + sdate + " (" + getText(syncInterval.textID) + ")", accountSpinner, 2);
-                    }
-                     */
                     if ((errorMessage != null) && !errorMessage.isEmpty()) {
-                        ImapNotes3.ShowMessage(errorMessage, accountSpinner, 5);
+                        ImapNotes3.ShowMessage(errorMessage, listview, 5);
                     }
                 }
                 if (isChanged) RefreshList();
@@ -402,18 +347,21 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         getContentResolver().registerContentObserver(Uri.parse("content://" + BuildConfig.APPLICATION_ID + "/"), false, mObserver);
 
         FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
+
+        if (!IsAccountScoped()) {
+            // Every entry point names an account now (the account overview, or a share forwarded by
+            // it).  Without one this screen has nothing to show, and the overview owns that state.
+            Log.w(TAG, "onCreate: the intent does not name an account");
+            finish();
+        }
     }
 
-    void handleSendMultipleImages(Intent intent) {
+    void handleSendMultipleImages(@NonNull Intent intent) {
         Log.d(TAG, "handleSendMultipleImages");
         ArrayList<Uri> messageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
         String accountName = getSelectedAccountName();
-        if (accountName.isEmpty()) {
-            ImapNotes3.ShowMessage(R.string.select_one_account, accountSpinner, 3);
-            return;
-        }
         if (messageUris != null) {
-            ImapNotes3.ShowMessage(R.string.importing, accountSpinner, 2);
+            ImapNotes3.ShowMessage(R.string.importing, listview, 2);
             UpdateList(messageUris, accountName);
         }
     }
@@ -421,7 +369,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart");
-        setPreferences();
     }
 
     @Override
@@ -429,7 +376,7 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         super.onResume();
         Log.d(TAG, "onResume");
         UpdateScopeUi();
-        applyRequestedAccountToSpinner();
+        RefreshScopedList();
         Check_Action_Send();
     }
 
@@ -469,7 +416,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
 
     private void savePreferences() {
         SharedPreferences.Editor preferences = getApplicationContext().getSharedPreferences(SettingsActivity.MAIN_PREFERENCE_NAME, MODE_PRIVATE).edit();
-        preferences.putLong(ACCOUNTSPINNER_POS, accountSpinner.getSelectedItemId());
         if (actionMenu == null) return;
         preferences.putBoolean(SORT_BY_DATE, actionMenu.findItem(R.id.sort_date).isChecked());
         preferences.putBoolean(SORT_BY_TITLE, actionMenu.findItem(R.id.sort_title).isChecked());
@@ -477,23 +423,19 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         preferences.apply();
     }
 
-    private void setPreferences() {
-        Log.d(TAG, "setPreferences:");
-        SharedPreferences preferences = getApplicationContext().getSharedPreferences(SettingsActivity.MAIN_PREFERENCE_NAME, MODE_PRIVATE);
-        if (IsAccountScoped()) {
-            // In scoped mode the launch intent decides which account is shown.
-            return;
-        }
-        accountSpinner.setSelection((int) preferences.getLong(ACCOUNTSPINNER_POS, 0));
-    }
-
-
     private void RefreshList() {
         RefreshList(getSelectedAccountName());
     }
+
     private void RefreshList(String accountName) {
         if(actionMenu == null)
             return;
+        if (accountName.isEmpty()) {
+            // An empty name would ask the database for the notes of every account, which this screen
+            // does not show any more.
+            Log.w(TAG, "RefreshList: no account to refresh");
+            return;
+        }
         Log.d(TAG, "RefreshList: ");
         listToView.setSortOrder(getSortOrder());
         synchronized (ImapNotes3.MainLock) {
@@ -665,10 +607,9 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(view -> newNote());
 
-        UpdateScopedMenuItems();
-        // RefreshList() only works once the menu exists, and a Spinner that is hidden (scoped mode)
-        // never reports a selection change, so the list is filled here as well.
-        applyRequestedAccountToSpinner();
+        UpdateScopeUi();
+        // RefreshList() needs the menu to exist, so the list is filled here as well as in onResume().
+        RefreshScopedList();
         return true;
     }
 
@@ -690,6 +631,11 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         intentActionSend = null;
         if (intent.getBooleanExtra(NoteDetailActivity.ActivityTypeProcessed,false)) {
             Log.d(TAG, "Check_Action_Send: Intent already processed");
+            return;
+        }
+        if (!IsAccountScoped()) {
+            // AccountListActivity always names the account a share goes to before it forwards one.
+            Log.w(TAG, "Check_Action_Send: the list is not scoped to an account");
             return;
         }
 
@@ -743,20 +689,8 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                 Log.d(TAG, "onOptionsItemSelected: home");
                 finish();
                 return true;
-            case R.id.all_accounts:
-                ShowAllAccounts(!showingAllAccounts);
-                return true;
-            case R.id.newaccount: {
-                Intent res = new Intent(ListActivity.this, AccountConfigurationActivity.class);
-                res.putExtra(AccountConfigurationActivity.ACTION, AccountConfigurationActivity.Actions.CREATE_ACCOUNT);
-                startActivityForResult(res, ListActivity.ADD_ACCOUNT);
-                return true;
-            }
             case R.id.refresh:
-                if (getSelectedAccountName().isEmpty())
-                    ImapNotes3.ShowMessage(R.string.select_one_account, accountSpinner, 3);
-                else
-                    TriggerSync(true);
+                TriggerSync(true);
                 return true;
             case R.id.newnote:
                 newNote();
@@ -822,168 +756,64 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         }
     }
 
-    private Integer getSpinnerPos(String accountName) {
-        int n = accountSpinner.getCount();
-        for (int i = 1; i < n; i++) {
-            if (accountName.equals(accountSpinner.getAdapter().getItem(i).toString())) {
-                return (i);
-            }
-        }
-        return 0;
-    }
-
-    // Spinner item selected listener
-    @Override
-    public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
-        Log.d(TAG, "onItemSelected");
-        String accountName = getSelectedAccountName();
-        listToView.setAccountName(accountName);
-        RefreshList(accountName);
-    }
-
-    @Override
-    public void onNothingSelected(AdapterView<?> parent) {
-        // TODO Auto-generated method stub
-    }
-
-    // Hack: if the Spinner isDisabled Search is active->
-    //all accounts are selected
-    private Account getSelectedAccount() {
-        long pos = accountSpinner.getSelectedItemId();
-        if (pos <= 0) {
-            if (accounts.length == 1) {
-                return accounts[0];
-            }
-        } else {
-            try {
-                return accounts[(int) pos - 1];
-            } catch (Exception e) {
-                Log.e(TAG, "getSelectedAccount wrong pos: " + pos, e);
-            }
-        }
-        return null;
-    }
-
+    /**
+     * The account whose notes are shown.  This screen has no account selection of its own any more,
+     * so the name it was opened with is the answer.
+     */
+    @NonNull
     private String getSelectedAccountName() {
-        Account account = getSelectedAccount();
-        if (account == null)
-            return "";
-        return account.name;
-    }
-
-    private void applyRequestedAccountToSpinner() {
-        String target = IsAccountScoped() ? scopedAccountName : requestedAccountName;
-        if (target == null || target.isEmpty() || accountSpinner == null || listToView == null) {
-            return;
-        }
-        if (showingAllAccounts) {
-            // The user explicitly asked this screen to show all accounts.
-            if (accountSpinner.getSelectedItemPosition() != 0) {
-                accountSpinner.setSelection(0);
-            }
-            String allAccountsName = getSelectedAccountName();
-            listToView.setAccountName(allAccountsName);
-            RefreshList(allAccountsName);
-            return;
-        }
-
-        int pos = getSpinnerPos(target);
-        if (pos <= 0) {
-            return;
-        }
-
-        accountSpinner.setSelection(pos);
-        requestedAccountName = null;
-
-        String accountName = getSelectedAccountName();
-        if (!accountName.isEmpty()) {
-            listToView.setAccountName(accountName);
-            RefreshList(accountName);
-        }
+        return (scopedAccountName == null) ? "" : scopedAccountName;
     }
 
     /**
-     * True when this screen was started for one account (from the account overview),
-     * in contrast to the legacy spinner / share-intent mode.
+     * The {@code Account} behind {@link #getSelectedAccountName()}, needed to request a sync.
+     */
+    @Nullable
+    private Account getSelectedAccount() {
+        if (!IsAccountScoped()) {
+            return null;
+        }
+        return getAccountFromName(scopedAccountName);
+    }
+
+    /**
+     * Points the list at the scoped account and loads its notes.  Nothing reports a selection change
+     * any more, so this is called whenever the scope or the set of accounts changed.
+     */
+    private void RefreshScopedList() {
+        if (!IsAccountScoped() || listToView == null) {
+            return;
+        }
+        if (!ListActivity.accountList.contains(scopedAccountName)) {
+            // The accounts are collected asynchronously, so the scoped account may simply not be
+            // known here yet.  AccountsUpdateListener calls this again once it is.
+            Log.w(TAG, "RefreshScopedList: account is not available yet: " + scopedAccountName);
+            return;
+        }
+        listToView.setAccountName(scopedAccountName);
+        RefreshList(scopedAccountName);
+    }
+
+    /**
+     * True when this screen belongs to one account.  Every way of opening it names an account, so a
+     * list without a scope has nothing to show.
      */
     private boolean IsAccountScoped() {
         return scopedAccountName != null && !scopedAccountName.isEmpty();
     }
 
     /**
-     * Adapts the action bar and the account row to scoped / unscoped mode.
+     * Adapts the action bar to the scoped list: an Up button towards the account overview, and the
+     * account name as the title.
      */
     private void UpdateScopeUi() {
-        View accountLayout = findViewById(R.id.account_layout);
-        if (accountLayout == null) return;
         ActionBar bar = getSupportActionBar();
-
+        if (bar != null) {
+            bar.setDisplayHomeAsUpEnabled(true);
+            bar.setHomeButtonEnabled(true);
+        }
         if (IsAccountScoped()) {
-            // The row offers to switch accounts; the account overview does that instead.
-            // It stays in the view tree so Snackbars anchored on the spinner still work.
-            accountLayout.setVisibility(View.GONE);
-            if (bar != null) {
-                bar.setDisplayHomeAsUpEnabled(true);
-                bar.setHomeButtonEnabled(true);
-            }
-        } else {
-            accountLayout.setVisibility(View.VISIBLE);
-            if (bar != null) {
-                bar.setDisplayHomeAsUpEnabled(false);
-                bar.setHomeButtonEnabled(false);
-            }
-            setTitle(R.string.app_name);
-        }
-        UpdateScopeTitle();
-        UpdateScopedMenuItems();
-    }
-
-    private void UpdateScopeTitle() {
-        if (!IsAccountScoped()) return;
-        setTitle(showingAllAccounts ? getText(R.string.all_accounts) : scopedAccountName);
-    }
-
-    private void UpdateScopedMenuItems() {
-        if (actionMenu == null) return;
-
-        // Account management lives in the account overview; dropping the icon also
-        // leaves room for the account name in the title.
-        MenuItem newItem = actionMenu.findItem(R.id.newaccount);
-        if (newItem != null) newItem.setVisible(!IsAccountScoped());
-
-        MenuItem allItem = actionMenu.findItem(R.id.all_accounts);
-        if (allItem != null) {
-            // With a single account "All" would be identical to that account.
-            allItem.setVisible(IsAccountScoped() && (accountList != null) && (accountList.size() > 2));
-            allItem.setChecked(showingAllAccounts);
-        }
-    }
-
-    /**
-     * Switches the scoped notes list between the scoped account and all accounts.
-     */
-    private void ShowAllAccounts(boolean all) {
-        Log.d(TAG, "ShowAllAccounts: " + all);
-        if (accountSpinner == null || listToView == null) return;
-
-        int pos = all ? 0 : getSpinnerPos(scopedAccountName);
-        if (!all && (pos <= 0)) {
-            Log.w(TAG, "ShowAllAccounts: scoped account not available");
-            UpdateScopedMenuItems();
-            return;
-        }
-
-        showingAllAccounts = all;
-        UpdateScopeTitle();
-        UpdateScopedMenuItems();
-
-        if (accountSpinner.getSelectedItemPosition() == pos) {
-            String accountName = getSelectedAccountName();
-            listToView.setAccountName(accountName);
-            RefreshList(accountName);
-        } else {
-            // onItemSelected refreshes the list for us.
-            accountSpinner.setSelection(pos);
+            setTitle(scopedAccountName);
         }
     }
 
@@ -1015,29 +845,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                     String bgcolor = data.getStringExtra(EDIT_ITEM_COLOR);
                     String accountName = data.getStringExtra(EDIT_ITEM_ACCOUNTNAME);
                     UpdateList("", txt, bgcolor, accountName, UpdateThread.Action.Insert);
-                }
-                break;
-            case ListActivity.ADD_ACCOUNT:
-            case ListActivity.EDIT_ACCOUNT:
-                // Returning from ADD
-                // Cancel, when no Account exists
-                if ((ListActivity.accountList.size() <= 1) && (resultCode != ResultCodeSuccess) ) {
-                    noAccountExists();
-                 }
-                if (resultCode == ResultCodeRemoveAccount) {
-                    accountSpinner.setSelection(1);
-                    if(accounts.length >= 1) RefreshList(accounts[1].name);
-                }
-                if (resultCode == ResultCodeSuccess ) {
-                    ListActivity.accountManager.addOnAccountsUpdatedListener(
-                            new AccountsUpdateListener(), null, true);
-                    if (data != null) {
-                        Integer pos = getSpinnerPos(data.getStringExtra(EDIT_ITEM_ACCOUNTNAME));
-                        if (pos > 0) {
-                            accountSpinner.setSelection(pos);
-                        }
-                    }
-                    TriggerSync(true);
                 }
                 break;
             case ListActivity.SELECT_ARCHIVE_FOR_RESTORE:
@@ -1080,26 +887,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         return null;
     }
 
-    private void noAccountExists() {
-        Log.d(TAG, "noAccountExists");
-        if (IsShareIntent(getIntent())) {
-            // Sharing into the app needs an account before the note can be stored.
-            Intent res = new Intent(ListActivity.this, AccountConfigurationActivity.class);
-            startActivityForResult(res, ListActivity.ADD_ACCOUNT);
-            return;
-        }
-        // AccountListActivity owns the empty state and its add-account button.
-        finish();
-    }
-
-    private boolean IsShareIntent(@Nullable Intent intent) {
-        if (intent == null) {
-            return false;
-        }
-        String action = intent.getAction();
-        return Intent.ACTION_SEND.equals(action) || Intent.ACTION_SEND_MULTIPLE.equals(action);
-    }
-
     private void newNote() {
         Intent toNew;
 
@@ -1117,26 +904,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         intent.putExtra(NoteDetailActivity.ActivityTypeProcessed, true);
         if (intentActionSend != null)
            intentActionSend.putExtra(NoteDetailActivity.ActivityTypeProcessed, true);
-    }
-
-    private void updateAccountSpinner() {
-        Log.d(TAG, "updateAccountSpinner");
-        this.accountSpinner.setEnabled(true);
-        this.spinnerList.notifyDataSetChanged();
-        setPreferences();
-        long id = this.accountSpinner.getSelectedItemId();
-        // only one account active..disable selection
-        if (ListActivity.accountList.size() == 2) {
-            this.accountSpinner.setEnabled(false);
-            this.accountSpinner.setSelection(1);
-            id = 1;
-        }
-        if ((id == android.widget.AdapterView.INVALID_ROW_ID) || (id >= ListActivity.accountList.size())) {
-            this.accountSpinner.setSelection(1);
-        }
-        // A Spinner that is not shown (scoped mode hides the row) does not report a changed selection,
-        // so the note list has to be filled here instead of from onItemSelected.
-        applyRequestedAccountToSpinner();
     }
 
     @Nullable
@@ -1164,19 +931,13 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                     newAccounts.add(account);
                 }
             }
-            Account[] tempAccounts = new Account[newAccounts.size()];
+            accounts = newAccounts.toArray(new Account[0]);
             newList = new ArrayList<>();
-            newList.add(getString(R.string.all_accounts));
-            int i = 0;
             for (final Account account : newAccounts) {
-                tempAccounts[i++] = account;
                 newList.add(account.name);
             }
-            accounts = tempAccounts;
             boolean equalLists = true;
             ListIterator<String> iter = ListActivity.accountList.listIterator();
-            // skip first entry (All)
-            if (iter.hasNext()) iter.next();
             while (iter.hasNext()) {
                 String s = iter.next();
                 if (!(newList.contains(s))) {
@@ -1190,28 +951,23 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                     equalLists = false;
                 }
             }
-            boolean first = true;
             for (String accountName : newList) {
                 if (!(accountList.contains(accountName))) {
                     accountList.add(accountName);
                     equalLists = false;
-                    // skip first entry (All)
-                    if (!first)
-                        SyncUtils.CreateLocalDirectories(ImapNotes3.GetAccountDir(accountName));
+                    SyncUtils.CreateLocalDirectories(ImapNotes3.GetAccountDir(accountName));
                 }
-                first = false;
             }
-            if (!equalLists) {
-                updateAccountSpinner();
-            }
-            if (accountList.size() <= 1) {
-                noAccountExists();
+            if (accountList.isEmpty()) {
+                // The account of this list is gone, and the overview owns the empty state.
+                Log.w(TAG, "onAccountsUpdated: no account is left");
+                finish();
             } else if (IsAccountScoped() && !ListActivity.accountList.contains(scopedAccountName)) {
                 // The account this list belongs to was removed. The overview owns that state.
                 Log.w(TAG, "onAccountsUpdated: scoped account is gone: " + scopedAccountName);
                 finish();
-            } else {
-                applyRequestedAccountToSpinner();
+            } else if (!equalLists) {
+                RefreshScopedList();
             }
         }
     }

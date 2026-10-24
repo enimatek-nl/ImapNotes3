@@ -20,36 +20,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
-        android:id="@+id/account_layout"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/AccountBgColor"
-        android:orientation="horizontal"
-        android:textColor="@color/AccountTxtColor"
-
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <Spinner
-            android:id="@+id/accountSpinner"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:contentDescription="@string/AccountList"
-            android:popupBackground="@color/AccountBgColor" />
-
-        <ImageButton
-            android:id="@+id/editAccountButton"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_gravity="center"
-            android:layout_marginEnd="10dp"
-            android:background="@drawable/ic_action_user_edit"
-            android:contentDescription="@string/editAccount" />
-    </LinearLayout>
-
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeContainer"
         android:layout_width="match_parent"
@@ -58,7 +28,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/account_layout">
+        app:layout_constraintTop_toTopOf="parent">
 
         <de.niendo.ImapNotes3.Miscs.SwipeRevealListView
             android:id="@+id/notesList"

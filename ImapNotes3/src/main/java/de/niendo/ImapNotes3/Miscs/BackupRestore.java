@@ -76,7 +76,7 @@ public class BackupRestore extends DialogFragment implements SimpleDialog.OnDial
 
     public BackupRestore(Uri uri, List<String> accountList) {
         this.uri = uri;
-        accountList.remove(0);
+        // The list is the accounts of the app; there is no "all accounts" entry at the front any more.
         this.accountList = accountList;
     }
 
@@ -127,8 +127,9 @@ public class BackupRestore extends DialogFragment implements SimpleDialog.OnDial
         Context context = ImapNotes3.getAppContext();
 
         if (accountname.isEmpty()) {
+            // Only possible without an account scope: the archive then holds every account.
             directory = ImapNotes3.GetRootDir().toString();
-            title = context.getString(R.string.all_accounts);
+            title = context.getString(R.string.app_name);
             basePath = "";
         } else {
             directory = ImapNotes3.GetAccountDir(accountname).toString();

@@ -263,8 +263,8 @@ account settings stay untouched on disk after a failed check.
 - Consequence to be aware of until **Phase 5b** lands: there is no way to remove an account any more — the
   Delete button was this screen’s only one. Editing is still reached by long-press on an account row; 5b
   replaces that with the swipe-revealed edit / delete.
-- `ListActivity`’s `ResultCodeRemoveAccount` branch in `onActivityResult` is now dead code (nothing
-  produces that code any more) and goes away together with the unscoped list in Phase 9.
+- `ListActivity`’s `ResultCodeRemoveAccount` branch in `onActivityResult` was dead code after this phase;
+  it is gone since Phase 9.
 
 ---
 
@@ -511,9 +511,9 @@ Opening Settings from an account’s notes list and going back (or up) returns t
 
 ### Notes / remaining
 
-- The unscoped notes list (title “ImapNotes3”, account spinner) still exists on purpose: it is what a
-  share intent (`ACTION_SEND`) opens, and the account row there keeps the edit / remove buttons. It is no
-  longer reachable by navigating inside the app. Its removal is tracked by **Phase 9**.
+- The unscoped notes list (title “ImapNotes3”, account spinner) used to exist on purpose: it is what a
+  share intent (`ACTION_SEND`) opened. It is gone since **Phase 9** — the share filters live on
+  `AccountListActivity`, which chooses the account and forwards the payload to the scoped list.
 - Settings can only be reached from the notes list, not from the account overview.
 
 ---
@@ -641,8 +641,8 @@ account edit screen (Phase 2c) and lives only here, iOS-style.
 ### Notes / remaining
 
 - Long-press editing is gone; the revealed edit action is the only path now.
-- `ListActivity` still carries the orphaned `ResultCodeRemoveAccount` plumbing from the legacy spinner
-  screen, which nothing sets any more — cleanup deferred to Phase 9.
+- `ListActivity`’s orphaned `ResultCodeRemoveAccount` plumbing from the legacy spinner screen was removed
+  in Phase 9.
 
 ---
 
@@ -745,6 +745,13 @@ This is intentionally vague until later.
 
 ## Phase 9 — Get rid of the unscoped notes list (share intents)
 
+**Status:** implemented and verified on the emulator. The share filters now live on `AccountListActivity`,
+which acts as the "which account?" step and forwards the payload to the scoped `ListActivity` (now
+`exported="false"`); the spinner row, the `all_accounts` menu item and the unscoped branch are gone. The
+zero-account and the more-than-one-account share paths are written but could not be exercised on the test
+device, which has exactly one real account (deleting it was off limits, and a throwaway second account
+needs a live IMAP server).
+
 ### Deliverable
 
 `ListActivity` only ever shows one account’s notes. The legacy “all accounts” list — the one with the
@@ -759,45 +766,85 @@ reference step instead.
 
 ### Steps
 
-- [ ] Move the share / search `intent-filter`s from `.ListActivity` to `.AccountListActivity` in
-      `AndroidManifest.xml` (keep the `intent_save_as_note` / `intent_import_note` labels).
-- [ ] In `AccountListActivity`, detect a share intent in `onCreate` / `onNewIntent` and decide the target
-      account — the “new reference system”:
-    - [ ] Zero accounts: start account setup first, then come back to the share (today: Back from setup
-          re-opens setup in a loop — decide the intended UX here).
-    - [ ] One account: use it directly.
-    - [ ] More than one: use the last-opened account (Phase 3’s `LAST_ACCOUNT_NAME` pref), or show a
-          lightweight account picker sheet.
-- [ ] Forward the payload (the incoming intent’s `EXTRA_TEXT` / `EXTRA_STREAM` / `EXTRA_EMAIL`, plus
-      `FLAG_GRANT_READ_URI_PERMISSION`) into the scoped `ListActivity` via the existing
-      `EDIT_ITEM_ACCOUNTNAME` extra, so the existing `Check_Action_Send()` handling (Insert / Update via
-      `UpdateList` and `UpdateThread.Action.Insert`) runs unchanged under a scope.
-- [ ] Then delete unscoped mode from `ListActivity`:
-    - [ ] Drop `account_layout` / `accountSpinner` / `editAccountButton` from `main.xml` and their wiring
-          (they are already hidden in scoped mode since Phase 4).
-    - [ ] Drop `showingAllAccounts` and the spinner position 0 = “all” special case in `getSpinnerPos`.
-    - [ ] Drop the `all_accounts` menu item and its string, and `select_one_account` if unused after that.
-    - [ ] Drop `ListActivity.Check_Action_Send()`’s cross-account lookup (`GetAccountNameForItem`) and
-          `ResultCodeRemoveAccount` plumbing that Phase 2c/5b leave orphaned.
-- [ ] Decide the fate of “All accounts” as a concept: with the unscoped list gone there is no screen that
-      shows notes of every account at once. Keep the menu item and have it mean something else, or remove
-      it (removing a string key costs Weblate re-translation; keeping it unused is cheaper).
+- [x] Moved the share `intent-filter`s (`SEND` text / image / rfc822 and `SEND_MULTIPLE`, keeping the
+      `intent_save_as_note` / `intent_import_note` labels) from `.ListActivity` to
+      `.AccountListActivity`. `ListActivity` became `exported="false"`, `SettingsActivity`’s
+      `parentActivityName` now points at `.AccountListActivity`, and the `android.app.searchable`
+      meta-data (with its “what is this for?” TODO comment) was left untouched.
+- [x] `AccountListActivity` detects a share intent in `onCreate` / `onNewIntent` (`IsShareIntent()` +
+      `routeShareIntent()`) and decides the target account — the “new reference system”:
+    - [x] Zero accounts: the share is remembered in `pendingShare`, setup is started, and the share is
+          forwarded when setup returns `ResultCodeSuccess` together with `EDIT_ITEM_ACCOUNTNAME` (dropped
+          when the user cancels). No Back-loop. _Not exercised on a device._
+    - [x] One account: forwarded directly.
+    - [x] More than one: always asks — a one-tap `AlertDialog` (title `select_one_account`) listing the
+          account names, plus Cancel. Deliberate choice: never silently take the last-opened account for a
+          share the user aimed at a specific account.
+- [x] `sendShareToAccount()` copies the incoming intent (so `EXTRA_TEXT` / `EXTRA_STREAM` / `EXTRA_EMAIL`,
+      the action and the MIME type arrive unchanged), `setClass(this, ListActivity.class)`, adds
+      `CLEAR_TOP | SINGLE_TOP` and `FLAG_GRANT_READ_URI_PERMISSION`, and puts `EDIT_ITEM_ACCOUNTNAME`, so
+      the existing `Check_Action_Send()` handling (Insert / Update via `UpdateList` and
+      `UpdateThread.Action.Insert`) runs unchanged under a scope. It also calls `saveLastAccountName()`.
+- [x] Deleted unscoped mode from `ListActivity` (~120 lines):
+    - [x] `account_layout` is gone from `main.xml` (`swipeContainer` is constrained to the parent top) and
+          `res/layout/account_spinner_item.xml` was deleted; `getSpinnerPos`,
+          `applyRequestedAccountToSpinner`, `updateAccountSpinner`, `setPreferences` /
+          `ACCOUNTSPINNER_POS`, the `OnItemSelectedListener`, `UpdateScopeTitle`,
+          `UpdateScopedMenuItems` and `noAccountExists` are gone.
+    - [x] `showingAllAccounts` is gone: `getSelectedAccountName()` / `getSelectedAccount()` are
+          scope-based (`getAccountFromName(scopedAccountName)`), `RefreshScopedList()` replaces the spinner
+          refresh, `UpdateScopeUi()` only sets the Up button and the title, and `RefreshList` bails out on
+          an empty account name, which keeps `NotesDb.GetStoredNotes("")` (the “all accounts” query)
+          unreachable from the list.
+    - [x] `newaccount` and `all_accounts` were removed from `res/menu/list.xml`. The string keys
+          `all_accounts`, `AccountList` and `new_account` are now unused but **kept on purpose** —
+          deleting a key costs Weblate re-translation. `select_one_account` is still used (the move
+          dialog in `NoteDetailActivity` and the new share picker). `values/strings.xml` is byte-identical
+          to HEAD.
+    - [x] `Check_Action_Send()` no longer does the `GetAccountNameForItem` cross-account lookup (it refuses
+          an unscoped list instead) and the orphaned `ResultCodeRemoveAccount` branch plus the
+          `ADD_ACCOUNT` / `EDIT_ACCOUNT` request codes are deleted.
+- [x] “All accounts” is gone as a concept: no screen shows notes of every account at once. Backup and
+      restore adapted — `BackupRestore` no longer calls `accountList.remove(0)` (the caller’s list has no
+      fake “All” entry any more, so that line would have emptied the restore picker) and the all-accounts
+      archive is titled with `R.string.app_name`. This was the one hidden coupling worth finding: several
+      `accountList.size()` comparisons assume index 0 is a real account.
 
 ### Acceptance criteria
 
 - [ ] Sharing text / an image / an rfc822 message from another app lands in the chosen account’s notes
       list with the new note visible after the upload, and never shows the spinner list.
+      _Partly verified:_ a `text/plain` share (warm and after a force-stop) logs
+      `routeShareIntent: android.intent.action.SEND text/plain` → `sendShareToAccount: …`, reuses the
+      existing `ListActivity` instance, shows the “Insert shared data as new note” Snackbar, and OK opens
+      the editor; Back from there discards it, so no junk note is left. Image and rfc822 shares share the
+      same code path but were not fired from another app.
 - [ ] Sharing with zero accounts leads to account setup without a Back-loop, then to a note.
-- [ ] `grep -rn "accountSpinner\|all_accounts\|showingAllAccounts"` finds nothing in code or layouts.
-- [ ] Normal navigation (overview → notes → back) is unaffected.
+      _Not tested: would need the only account on the device removed._
+- [x] `grep -rn "accountSpinner\|all_accounts\|showingAllAccounts"` finds nothing in code or layouts —
+      only the unused `all_accounts` key in `values/strings.xml`.
+- [x] Normal navigation is unaffected: overview → tap account → that account’s notes (title = account
+      name, Up arrow, no spinner row), Settings → Up returns the _same_ list instance, the menu Refresh and
+      pull-to-refresh both start a sync, a row tap opens the editor, and a row swipe still reveals delete
+      with its confirmation dialog. The overflow menu is now only Filter by HashTag / Refresh / Sort ×3 /
+      Settings.
 
 ### Notes / remaining
 
-- This is the cleanup phase for things deliberately left behind by Phases 2b/4/4d: the legacy unscoped
-  list still exists only as the share-intent entry point and as the holder of the account spinner/edit
-  button.
-- `SEARCH` filter is registered on `ListActivity` but the app never triggers system search; fold it into
-  the same routing or drop it after checking.
+- `routeShareIntent()` is only called from `onCreate` when `savedInstanceState == null` (the same trap as
+  `restoreLastAccount()`: routing in `onStart`/`onNewIntent` for a launch would bounce `CLEAR_TOP` /
+  `SINGLE_TOP` forever). Consequence: if the process is killed while a share waits for a new account,
+  `pendingShare` is restored but not re-routed by itself — the user has to start setup again (or the share
+  is dropped). Kept as is; revisit if it ever bites.
+- The share “Insert …” Snackbar can be displaced by the read-only sync-error Snackbar. Snackbar queueing
+  behaviour is pre-existing, not introduced here.
+- `ListActivity` is no longer exported, so `adb shell am start -n de.niendo.ImapNotes3/.ListActivity` is
+  refused. Drive it through `AccountListActivity` (the share intent) when testing from adb.
+- The `ACTION_SEARCH` filter was **dropped** rather than routed: no code in the app handles `ACTION_SEARCH`
+  (in-app search is a `SearchView` in the list menu). The `xml/searchable` resource and the manifest
+  meta-data stay, with their existing TODO comment.
+- Strings: rather than hand-editing a Weblate-managed file, the now-unused keys were left in place. If the
+  maintainer wants them gone, do it through Weblate so the 15+ locales get cleaned up in one place.
 
 ---
 
@@ -822,15 +869,16 @@ Pick them one by one:
         removed account only).
 13. Phase 6: polish account overview.
 14. Phase 7: polish notes overview.
-15. Phase 9: delete the unscoped notes list once share intents are routed.
+15. [x] Phase 9: delete the unscoped notes list once share intents are routed.
 16. Later: editor theming pass.
 
 ---
 
 ## Risk notes
 
-- The share-intent flow is currently tied to `ListActivity`. Be careful when moving launcher filters.
-  Phase 9 covers re-routing it before the unscoped list is deleted.
+- ~~The share-intent flow is tied to `ListActivity`.~~ Resolved in Phase 9: the filters moved to
+  `AccountListActivity`, which picks the account and forwards the payload scoped. Watch out for the
+  `savedInstanceState == null` guard there, and remember `ListActivity` is not exported any more.
 - `SyncUtils.RemoveAccount` used to delete _all_ local files under the app root dir, not just the removed
   account’s. Fixed in Phase 5b; worth an end-to-end check once a second account can be created on a device.
 - The existing `ListActivity` uses static state and account listeners; moving navigation around should not break account updates.

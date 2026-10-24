@@ -61,21 +61,8 @@
             app:showAsAction="ifRoom|collapseActionView" />
     </group>
 
-    <item
-        android:id="@+id/newaccount"
-        android:icon="@drawable/ic_action_add_user"
-        android:title="@string/new_account"
-        app:showAsAction="ifRoom|collapseActionView" />
-
-    <!-- Only shown while the list is scoped to one account (see ListActivity). -->
-    <item
-        android:id="@+id/all_accounts"
-        android:checkable="true"
-        android:checked="false"
-        android:title="@string/all_accounts"
-        android:visible="false"
-        app:showAsAction="never" />
-
+    <!-- Account management (add / edit / delete) lives in the account overview, so this menu has no
+    account entries. -->
     <item
         android:id="@+id/settings"
         android:layout_width="wrap_content"

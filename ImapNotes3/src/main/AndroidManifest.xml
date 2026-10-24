@@ -41,22 +41,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="true"
-            android:label="@string/settings"
-            android:parentActivityName=".ListActivity" />
-        <activity
-            android:name=".ListActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:parentActivityName=".AccountListActivity">
-            <!-- Share and search entry points stay here until they can be forwarded from AccountListActivity. -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEARCH" />
-            </intent-filter>
+            <!--
+ A share is received here, because this screen owns the accounts.  It names the account the note
+ should go to (asking when there is more than one) and forwards the payload to that account's notes
+ list.  See AccountListActivity.routeShareIntent().
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
 
@@ -79,6 +68,23 @@
 
                 <data android:mimeType="message/rfc822" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:label="@string/settings"
+            android:parentActivityName=".AccountListActivity" />
+        <!--
+ The notes list always belongs to one account and is only reachable from the account overview, so it
+ does not need to be exported.  The ACTION_SEARCH filter that used to be here is gone: no code ever
+ handled that action, and the search of the notes list is a menu SearchView (see res/menu/list.xml).
+        -->
+        <activity
+            android:name=".ListActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:parentActivityName=".AccountListActivity">
             <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
             <meta-data
                 android:name="android.app.searchable"

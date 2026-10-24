@@ -54,6 +54,7 @@ public class AccountListActivity extends AppCompatActivity {
      * Account that was opened last, so a later start of the app can land in its notes list.
      */
     private static final String PREF_LAST_ACCOUNT_NAME = "LastAccountName";
+    private static final String STATE_PENDING_SHARE = "PendingShare";
 
     @NonNull
     private final List<ImapNotesAccount> accounts = new ArrayList<>();
@@ -69,6 +70,13 @@ public class AccountListActivity extends AppCompatActivity {
             reloadAccounts();
         }
     };
+
+    /**
+     * A share that has to wait for an account, set while account setup runs for a share that arrived
+     * when no account existed.  It is kept over a rotation so setup can still finish the share.
+     */
+    @Nullable
+    private Intent pendingShare = null;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -101,7 +109,24 @@ public class AccountListActivity extends AppCompatActivity {
         // Only for a cold start: doing this in onNewIntent or onStart would bounce back and forth,
         // because openAccountNotes brings an existing notes list to the front.
         if (savedInstanceState == null) {
-            restoreLastAccount();
+            Intent startIntent = getIntent();
+            if (IsShareIntent(startIntent)) {
+                // Route the share instead of opening the last account, because the shared note would
+                // otherwise go to that account without the user choosing it.
+                routeShareIntent(startIntent);
+            } else {
+                restoreLastAccount();
+            }
+        } else {
+            pendingShare = savedInstanceState.getParcelable(STATE_PENDING_SHARE);
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (pendingShare != null) {
+            outState.putParcelable(STATE_PENDING_SHARE, pendingShare);
         }
     }
 
@@ -126,6 +151,9 @@ public class AccountListActivity extends AppCompatActivity {
         Log.d(TAG, "onNewIntent");
         setIntent(intent);
         reloadAccounts();
+        if (IsShareIntent(intent)) {
+            routeShareIntent(intent);
+        }
     }
 
     @Override
@@ -133,6 +161,21 @@ public class AccountListActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         Log.d(TAG, "onActivityResult: " + requestCode + " " + resultCode);
         reloadAccounts();
+        if (requestCode != ADD_ACCOUNT || pendingShare == null) {
+            return;
+        }
+        if (resultCode == ListActivity.ResultCodeSuccess && data != null) {
+            // Setup succeeded: the note that was shared can now go into the new account.
+            String newAccountName = data.getStringExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME);
+            if (newAccountName != null && !newAccountName.isEmpty()) {
+                Log.i(TAG, "onActivityResult: continuing the share with the new account " + newAccountName);
+                sendShareToAccount(pendingShare, newAccountName);
+                return;
+            }
+        }
+        // Setup was cancelled, so nothing the shared note could be stored in exists after all.
+        Log.i(TAG, "onActivityResult: dropping the share that was waiting for an account");
+        pendingShare = null;
     }
 
     private void reloadAccounts() {
@@ -242,6 +285,75 @@ public class AccountListActivity extends AppCompatActivity {
         res.putExtra(AccountConfigurationActivity.ACTION, AccountConfigurationActivity.Actions.EDIT_ACCOUNT);
         res.putExtra(AccountConfigurationActivity.ACCOUNTNAME, accountName);
         startActivityForResult(res, EDIT_ACCOUNT);
+    }
+
+    /**
+     * True for the intents this screen receives from other apps when something is shared into a note.
+     */
+    private static boolean IsShareIntent(@Nullable Intent intent) {
+        if (intent == null) {
+            return false;
+        }
+        String action = intent.getAction();
+        return Intent.ACTION_SEND.equals(action) || Intent.ACTION_SEND_MULTIPLE.equals(action);
+    }
+
+    /**
+     * Decides which account a shared text, image or mail belongs to and opens that account's notes
+     * list with the share attached.  This replaces the account Spinner of the old unscoped list: the
+     * payload itself is never handled here, it stays with {@code ListActivity.Check_Action_Send()}.
+     */
+    private void routeShareIntent(@NonNull Intent shareIntent) {
+        Log.d(TAG, "routeShareIntent: " + shareIntent.getAction() + " " + shareIntent.getType());
+        Account[] configured = accountManager.getAccountsByType(Utilities.PackageName);
+
+        if (configured.length == 0) {
+            // A note needs an account to be stored in.  Remember the share and come back to it once
+            // setup succeeded, instead of offering the share again on every visit of this screen.
+            Log.i(TAG, "routeShareIntent: no account exists, account setup comes first");
+            pendingShare = shareIntent;
+            createAccount();
+            return;
+        }
+        if (configured.length == 1) {
+            sendShareToAccount(shareIntent, configured[0].name);
+            return;
+        }
+
+        // Several accounts: the user names the target, a share going to the wrong account is worse
+        // than one extra tap.
+        CharSequence[] names = new CharSequence[configured.length];
+        for (int i = 0; i < configured.length; i++) {
+            names[i] = configured[i].name;
+        }
+        SwipeRevealRow.concealRevealedRow();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.select_one_account)
+                .setItems(names, (dialog, which) -> sendShareToAccount(shareIntent, configured[which].name))
+                .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                    Log.i(TAG, "routeShareIntent: the share was cancelled");
+                    pendingShare = null;
+                })
+                .show();
+    }
+
+    /**
+     * Hands the incoming share on to the notes list of one account.  The intent is copied so its
+     * action, MIME type and extras (EXTRA_TEXT / EXTRA_STREAM) arrive unchanged, and the account name
+     * gives the list its scope.
+     */
+    private void sendShareToAccount(@NonNull Intent shareIntent, @NonNull String accountName) {
+        Log.d(TAG, "sendShareToAccount: " + accountName);
+        pendingShare = null;
+        saveLastAccountName(accountName);
+        Intent res = new Intent(shareIntent);
+        res.setClass(this, ListActivity.class);
+        res.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        // The read permission the sender granted for EXTRA_STREAM lives in the flags that were just
+        // replaced, so it is set explicitly for the copy.
+        res.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        res.putExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME, accountName);
+        startActivity(res);
     }
 
     private class AccountAdapter extends BaseAdapter {
