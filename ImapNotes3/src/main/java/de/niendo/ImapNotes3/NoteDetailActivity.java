@@ -917,7 +917,7 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
             intent.putExtra(ListActivity.EDIT_ITEM_NUM_IMAP, suid);
             intent.putExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME, accountName);
             ImapNotes3.AvoidLargeBundle = value;
-            //intent.putExtra(ListActivity.EDIT_ITEM_TXT, value);
+            // Not an extra of the intent: a long body exceeds the binder limit, see the field.
             intent.putExtra(ListActivity.EDIT_ITEM_COLOR, bgColor);
             setResult(NoteDetailActivity.EDIT_BUTTON, intent);
             textChanged = false;

@@ -740,11 +740,11 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
 
             try {
                 startActivityForResult(
-                        Intent.createChooser(intent, "Select a ZIP file"),
+                        Intent.createChooser(intent, getString(R.string.select_a_zip_file)),
                         SELECT_ARCHIVE_FOR_RESTORE);
             } catch (ActivityNotFoundException e) {
                 Log.e(TAG, "ActivityNotFoundException: ", e);
-                ImapNotes3.ShowMessage("Please install a file manager.", listview, 3000);
+                ImapNotes3.ShowMessage(R.string.install_a_file_manager, listview, 5);
             }
         }
     }
@@ -824,20 +824,27 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                     UpdateList(suid, null, null, accountName, UpdateThread.Action.Delete);
                 }
                 if (resultCode == ListActivity.EDIT_BUTTON) {
-                    String txt = ImapNotes3.AvoidLargeBundle;  //data.getStringExtra(EDIT_ITEM_TXT);
+                    String txt = TakeNoteBodyFromEditor();
                     String suid = data.getStringExtra(EDIT_ITEM_NUM_IMAP);
                     String bgcolor = data.getStringExtra(EDIT_ITEM_COLOR);
                     String accountName = data.getStringExtra(EDIT_ITEM_ACCOUNTNAME);
-                    UpdateList(suid, txt, bgcolor, accountName, UpdateThread.Action.Update);
+                    if (txt == null)
+                        // Without a body UpdateThread would throw, so the note keeps what it has.
+                        Log.w(TAG, "onActivityResult: the editor sent no body for " + suid);
+                    else
+                        UpdateList(suid, txt, bgcolor, accountName, UpdateThread.Action.Update);
                 }
                 break;
             case ListActivity.NEW_BUTTON:
-                // Returning from NewNoteActivity
+                // Returning from the editor, which was started to create a note instead of edit one
                 if (resultCode == ListActivity.EDIT_BUTTON) {
-                    String txt = ImapNotes3.AvoidLargeBundle; //data.getStringExtra(EDIT_ITEM_TXT);
+                    String txt = TakeNoteBodyFromEditor();
                     String bgcolor = data.getStringExtra(EDIT_ITEM_COLOR);
                     String accountName = data.getStringExtra(EDIT_ITEM_ACCOUNTNAME);
-                    UpdateList("", txt, bgcolor, accountName, UpdateThread.Action.Insert);
+                    if (txt == null)
+                        Log.w(TAG, "onActivityResult: the editor sent no body for a new note");
+                    else
+                        UpdateList("", txt, bgcolor, accountName, UpdateThread.Action.Insert);
                 }
                 break;
             case ListActivity.SELECT_ARCHIVE_FOR_RESTORE:
@@ -868,7 +875,19 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         }
     }
 
-    ;
+    /**
+     * Reads the note body that {@link NoteDetailActivity} hands over and clears the field again.
+     * The body is deliberately not an extra of the result Intent: a long note can exceed the binder
+     * transaction limit and kill the app with a TransactionTooLargeException.  Clearing it matters as
+     * much as reading it - the text would otherwise stay in memory, and an update whose body never
+     * arrived would silently write the body of the note edited before.
+     */
+    @Nullable
+    private String TakeNoteBodyFromEditor() {
+        String txt = ImapNotes3.AvoidLargeBundle;
+        ImapNotes3.AvoidLargeBundle = null;
+        return txt;
+    }
 
     public Account getAccountFromName(String accountName) {
         for (Account account : ListActivity.accounts

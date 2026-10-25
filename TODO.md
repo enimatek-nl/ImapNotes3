@@ -19,7 +19,7 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew assembleDebug
 ```
 
-Current (after §2, 2026-10-25): **192 errors / 121 warnings**, and **every remaining error is a
+Current (after §5, 2026-10-25): **195 errors / 121 warnings**, and **every remaining error is a
 `MissingTranslation`** — base-English strings Weblate has not translated yet, i.e. expected noise
 here (the 3 `UseAppTint` errors are gone, and the two new base keys of §2.5 added 2 to the count).
 Warnings went 138 → 134 in §1 and 134 → 121 in §2. The 13 that §2 removed: `UseAppTint` was an
@@ -326,31 +326,60 @@ Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Webl
 - [ ] `Miscs/SmtpServerNameFinder.java` is wired to the account form only:
       `AccountConfigurationActivity.java:261` fills the server field from the e-mail domain.
       Confirm that is the intended UX, or the class is doing less than it looks like.
+- [ ] **Replace `ImapNotes3.AvoidLargeBundle`.** §5 made the hand-over safe (cleared after reading,
+      package-private), but a process-global static still carries a note body, and two editors on the
+      back stack would overwrite each other's text. The honest version writes the body to a file in
+      the cache directory and passes the path, or keeps the extra and checks the size first.
+- [ ] **Replace `ImapNotes3.intent` as the sync-to-UI channel** (see §5): `SyncAdapter:225-230` fills
+      a `public static Intent`, the `ContentObserver` of `ListActivity:334-339` reads it, and the
+      `selfChange` guard plus the commented-out `SYNCED` / `SYNCINTERVAL` reads show how much that
+      global is papering over. A broadcast carrying its own extras, or a small result object, removes
+      the race and lets the sync error reach the right screen.
 
-## 5. Noticed while working §1 and §2
+## 5. Noticed while working §1 and §2 — ✅ done 2026-10-25
 
-Small, verified, and not worth a separate scan — pick these up while you are in the file.
+Small, verified, and not worth a separate scan. All fixed except the one that is a design change;
+that one moved to §4.
 
-- [ ] `ListActivity.java:747` — `ImapNotes3.ShowMessage("Please install a file manager.", listview,
-      3000)`: a user-facing string that never went through `res/values/strings.xml`, and a duration of
-      3000 _seconds_ (fifty minutes) where every other call passes single digits. Needs a base-English
-      key and something like `5`.
-- [ ] `ImapNotes3.java:178` `public static String AvoidLargeBundle` — the note body is passed between
-      `NoteDetailActivity:919` and `ListActivity:827,837` through a static field to dodge a
-      `TransactionTooLargeException`. It is never cleared, so the last note's text stays in memory,
-      and it silently breaks if two editors are ever on the back stack. A local file or a `Bundle`
-      with a proper size check would be the honest version.
-- [ ] `ImapNotes3.intent` — a `public static Intent` that `SyncAdapter:225-230` fills and
-      `ListActivity:334-339` reads: the sync-to-UI channel is process-global mutable state, which is
-      also why the `ContentObserver` has the `selfChange` guard. Worth knowing before touching either
-      side; the `SYNCED` / `SYNCINTERVAL` extras are already written but never read.
-- [ ] `Data/ImapNotesAccount.ClearHomeDir()` catches `IOException | Error` "for anbox" and only logs.
-      Called once, from `SyncAdapter:131`, right after `ClearDb` — swallowing the failure there leaves
-      note files of a deleted account on disk.
-- [ ] Deprecated `fill_parent` / `FILL_PARENT` still in `editor_row.xml`, `account_setup.xml`
-      (`layout_width="fill_parent"`, `android:layout_height="0px"`) and
-      `AccountConfigurationActivity:107` (`LinearLayout.LayoutParams.FILL_PARENT`); `match_parent` /
-      `MATCH_PARENT` are the same value with the modern name.
+- [x] `ListActivity.openFileSelector` — `ShowMessage("Please install a file manager.", listview,
+      3000)`: a user-facing string that had never gone through `strings.xml`, and a duration of 3000
+      **seconds** (fifty minutes) where every other call passes single digits. It is now
+      `R.string.install_a_file_manager` with `5`. The chooser title in the same block became
+      `R.string.select_a_zip_file`, and `SettingsActivity`'s `"Send email..."` became
+      `R.string.send_email_chooser` (with a real ellipsis). Three new base keys, hence _Baseline_ 192 →
+      195 errors.
+- [x] `ImapNotes3.AvoidLargeBundle` — the note body the editor hands to the list outside the Intent
+      (a long body in the result Intent kills the app with `TransactionTooLargeException`). It is now
+      package-private and documented, and `ListActivity.TakeNoteBodyFromEditor()` **clears it after
+      reading**: the text no longer stays in memory, and an update whose body never arrived can no
+      longer write the body of the note edited before. Both `onActivityResult` branches log and skip
+      when it is missing, which also avoids the `NullPointerException` a null body would cause at
+      `UpdateThread.WriteMailToNew` (`noteBody.length()`). Replacing the static with a file or a
+      size-checked `Bundle` is still the honest version → §4.
+- [ ] `ImapNotes3.intent` → **moved to §4.** The sync-to-UI channel is process-global mutable state
+      (`SyncAdapter` fills it, the `ContentObserver` of `ListActivity` reads it), which is also why
+      that observer needs the `selfChange` guard; `SYNCED` and `SYNCINTERVAL` are written but never
+      read (commented out in the observer). Doing this properly means a real signal — a broadcast with
+      extras or a result object — not a boy-scout touch.
+- [x] `Data/ImapNotesAccount.ClearHomeDir()` — the `catch (IOException | Error)` "for anbox" stays
+      (narrowing it cannot be tested here, and it does keep the sync adapter alive), but the log names
+      the directory that survives: that leftover is otherwise invisible, and the caller in
+      `SyncAdapter` goes straight on to recreating the directories.
+- [x] Deprecated `fill_parent` / `0px` / `FILL_PARENT` modernised to `match_parent` / `0dp` /
+      `MATCH_PARENT` (same values): `main.xml` ×2, `editor_row.xml`, `note_detail.xml` ×5,
+      `account_setup.xml` ×9 plus its `layout_height="0px"`, and `AccountConfigurationActivity`
+      (`LinearLayout.LayoutParams`).
+- [x] Found on the way and removed: a stray `;` after `ListActivity.onActivityResult`, the
+      commented-out `intent.putExtra(EDIT_ITEM_TXT, …)` in `NoteDetailActivity` (the constant does not
+      exist any more), and the two commented-out `SyncUtils.ClearHomeDir` /
+      `SyncUtils.CreateLocalDirectories` calls in `SyncAdapter` — the first names a method that is
+      gone, the second duplicates the `account.CreateLocalDirectories()` below it — and the comment
+      "Returning from NewNoteActivity" on the `NEW_BUTTON` case (`ListActivity`), a class this app has
+      never had.
+- [ ] New, left open: the debug-report subject in `SettingsActivity` is built by concatenation
+      (`"Logcat content for " + Utilities.FullApplicationName + " debugging"`) and is user-visible. A
+      proper fix needs a `%1$s` format string, i.e. translation surface, so it should go in with the
+      next Weblate round (§2.11).
 
 ## Traps — do not "clean" these
 

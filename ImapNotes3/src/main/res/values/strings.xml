@@ -88,6 +88,7 @@
     <string name="intent_save_as_note">Save as note</string>
     <string name="share_file_error">Share file error:</string>
     <string name="send_debug_report">Create Error Report</string>
+    <string name="send_email_chooser">Send email…</string>
     <string name="insert_as_new_note">Insert shared data as new note</string>
     <string name="insert_in_note">Insert shared data</string>
     <string name="ok">OK</string>
@@ -181,6 +182,8 @@
     <string name="CreateBackup_sum">Archive notes to a zip file.</string>
     <string name="RestoreBackup_sum">Restore one or more notes from a zip file.</string>
     <string name="no_notes_in_file">Archive contains no valid notes</string>
+    <string name="select_a_zip_file">Select a ZIP file</string>
+    <string name="install_a_file_manager">Please install a file manager.</string>
     <string name="copyImapFolderName">Copy notes in this folder before saving or deleting</string>
     <string name="extendedAccountSettings">Extended Settings</string>
     <string name="translation">Translation</string>

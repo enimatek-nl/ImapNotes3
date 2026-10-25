@@ -127,9 +127,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
                 // delete notes in NotesDb for this account
                 storedNotes.ClearDb(accountArg.name);
                 // delete notes in folders for this account and recreate dirs
-                //SyncUtils.ClearHomeDir(accountArg, applicationContext);
                 account.ClearHomeDir();
-                //SyncUtils.CreateLocalDirectories(accountArg.name, applicationContext);
                 account.CreateLocalDirectories();
                 // Get all notes from remote and replace local
                 syncUtils.GetNotes(accountArg,

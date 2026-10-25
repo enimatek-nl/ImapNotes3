@@ -124,8 +124,10 @@ public class ImapNotesAccount {
         try {
             FileUtils.deleteDirectory(rootDirAccount);
         } catch (IOException | Error e) {
-            // for anbox - otherwise it will crash
-            Log.e(TAG, "ClearHomeDir failed:", e);
+            // Errors are caught on purpose: under anbox the deletion fails in a way that would
+            // otherwise take the whole sync adapter down.  The price is that the note files of the
+            // account stay on disk unnoticed, so the message names the directory that survived.
+            Log.e(TAG, "ClearHomeDir failed, the directory stays behind: " + rootDirAccount, e);
         }
     }
 

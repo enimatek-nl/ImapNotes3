@@ -104,7 +104,7 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         expandMoreSettings.setVisibility(View.GONE);
          LinearLayout lLayout=findViewById(R.id.ViewExtendedAccountSettings);
         lLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.FILL_PARENT,
+                        LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
         lLayout.setVisibility(View.VISIBLE);
     };

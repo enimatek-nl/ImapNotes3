@@ -43,7 +43,7 @@
 
             <de.niendo.ImapNotes3.Miscs.NDSpinner
                 android:id="@+id/action_format"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/EditorMenuBgColor"
                 android:contentDescription="@string/format"
@@ -52,7 +52,7 @@
 
             <de.niendo.ImapNotes3.Miscs.NDSpinner
                 android:id="@+id/action_insert"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/EditorMenuBgColor"
                 android:contentDescription="@string/insert"
@@ -61,7 +61,7 @@
 
             <de.niendo.ImapNotes3.Miscs.NDSpinner
                 android:id="@+id/action_heading"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/EditorMenuBgColor"
                 android:contentDescription="@string/heading"
@@ -70,7 +70,7 @@
 
             <de.niendo.ImapNotes3.Miscs.NDSpinner
                 android:id="@+id/action_alignment"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/EditorMenuBgColor"
                 android:contentDescription="@string/alignment"
@@ -79,7 +79,7 @@
 
             <de.niendo.ImapNotes3.Miscs.NDSpinner
                 android:id="@+id/action_table"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/EditorMenuBgColor"
                 android:contentDescription="@string/table"

@@ -175,7 +175,16 @@ public class ImapNotes3 extends Application {
         return snackbar;
     }
 
-    public static String AvoidLargeBundle;
+    /**
+     * Carries a note body from the editor to the notes list outside of the Intent.  A long note can
+     * be bigger than the binder transaction limit, so putting it into the result Intent kills the app
+     * with a TransactionTooLargeException.  Package-private on purpose: only the two screens that
+     * take part in the hand-over may touch it, and the receiver clears it when it reads it
+     * ({@code ListActivity.TakeNoteBodyFromEditor}).
+     */
+    @Nullable
+    static String AvoidLargeBundle;
+
     public static void ShowMessage(@StringRes int resId, View view, int durationSeconds) {
         ShowMessage(mContext.getResources().getString(resId), view, durationSeconds);
     }

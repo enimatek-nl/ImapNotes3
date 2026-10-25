@@ -8,13 +8,13 @@
 
     <ScrollView
         android:id="@+id/scrollView"
-        android:layout_width="fill_parent"
+        android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="fill_parent"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
@@ -39,7 +39,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/accountnameEdit"
-                    android:layout_width="fill_parent"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="5dip"
                     android:hint="@string/account_name_description"
@@ -64,7 +64,7 @@
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/usernameEdit"
                     android:minHeight="48dp"
-                    android:layout_width="fill_parent"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="5dip"
                     android:autofillHints="AUTOFILL_HINT_USERNAME"
@@ -87,7 +87,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/passwordEdit"
-                    android:layout_width="fill_parent"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:autofillHints="AUTOFILL_HINT_PASSWORD"
                     android:hint="@string/your_password"
@@ -108,7 +108,7 @@
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/serverEdit"
-                    android:layout_width="fill_parent"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="5dip"
                     android:hint="@string/imap_notes_server"
@@ -117,7 +117,7 @@
 
             <ImageButton
                 android:id="@+id/BtnExpandAccountSettings"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@android:color/transparent"
                 android:contentDescription="@string/extendedAccountSettings"
@@ -128,8 +128,8 @@
 
             <LinearLayout
                 android:id="@+id/ViewExtendedAccountSettings"
-                android:layout_width="fill_parent"
-                android:layout_height="0px"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
                 android:orientation="vertical"
                 android:visibility="invisible">
 
@@ -222,7 +222,7 @@
 
             <LinearLayout
                 android:id="@+id/buttonsLayout"
-                android:layout_width="fill_parent"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal" />
 

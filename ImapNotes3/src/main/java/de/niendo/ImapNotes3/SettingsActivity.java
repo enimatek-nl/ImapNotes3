@@ -177,7 +177,7 @@ public class SettingsActivity extends AppCompatActivity {
             // the mail subject
             emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Logcat content for " + Utilities.FullApplicationName + " debugging");
             emailIntent.setType("message/rfc822");
-            startActivity(Intent.createChooser(emailIntent, "Send email..."));
+            startActivity(Intent.createChooser(emailIntent, getString(R.string.send_email_chooser)));
         }
 
         @Override
