@@ -476,7 +476,7 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
 
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
-        // TODO Auto-generated method stub
+        // Nothing to do: the security spinner only matters when an entry is selected.
     }
 
     public void Clear() {

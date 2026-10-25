@@ -18,80 +18,84 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew assembleDebug
 ```
 
-Current: **193 errors / 138 warnings.** 190 of the errors are `MissingTranslation` (base-English
-strings Weblate has not translated yet — expected noise here). The remaining **3 errors are
-`UseAppTint`, fixed by §2.3**, so after §1 + §2.3 the expectation is _exactly_ 190 errors and zero
-real errors.
+Current (after §1, 2026-10-24): **193 errors / 134 warnings.** 190 of the errors are
+`MissingTranslation` (base-English strings Weblate has not translated yet — expected noise here),
+so the only real errors are the **3 `UseAppTint` ones, fixed by §2.3**.
+§1 took the warnings from 138 to 134: 5 `UnusedResources` findings disappeared
+(`arrays.xml` ×2, `ic_action_add_user`, `ShareActionActionColor`, `transparent`) and one appeared
+(`refreshing_notes_list`, orphaned by the `SyncThread.resId` removal — see §2.11).
+After §2.3 the expectation is _exactly_ 190 errors and zero real errors.
 
 `lintDebug` fails the task on findings by design — a non-zero exit is not a broken build. Read the
 report file, not the exit code, until §3.1 lands.
 
 ---
 
-## 1. Dead code and dead resources — safe to delete
+## 1. Dead code and dead resources — ✅ done 2026-10-24
 
-Each item is self-contained and independently committable.
+All of §1 is committed to the working tree; `assembleDebug` builds and lint went 138 → 134 warnings
+with no new errors (see _Baseline_). Kept here as a record of what was removed.
 
 ### 1.1 Whole dead class
 
-- [ ] `Sync/Security.java` — 53-line enum, **zero references**. Both users in that package import
-      the live one: `Sync/SyncUtils.java:39` and `Sync/SyncAdapter.java:46` import
-      `de.niendo.ImapNotes3.Data.Security`. Delete the file.
+- [x] `Sync/Security.java` deleted — 53-line enum, **zero references**. Both users in that package
+      import the live one: `Sync/SyncUtils.java` and `Sync/SyncAdapter.java` import
+      `de.niendo.ImapNotes3.Data.Security`.
 
 ### 1.2 Dead methods and fields
 
-- [ ] `Sync/SyncUtils.java:658-669` — `finalize()` override whose whole body is commented out
+- [x] `Sync/SyncUtils.java` — `finalize()` override whose whole body was commented out
       (`store.close()`). Deprecated since Java 9, and `SyncAdapter` closes its stores explicitly.
-- [ ] `Miscs/UpdateThread.java:315` — private `MakeMessageWithAttachment()`, never called; the
-      attachment feature never landed (`Data/Attachment.java` was removed earlier).
-- [ ] `Data/ImapNotesAccount.java` — 14 stale accessors. The setup screen reads and writes userdata
-      through `ConfigurationFieldNames` directly, which is why these went dead:
-      `GetAccountName:142`, `GetUsername:167`, `SetUsername:171`, `GetPassword:177`,
-      `SetPassword:181`, `GetServer:187`, `SetServer:191`, `GetPortnum:196`, `SetPortnum:200`,
-      `GetSecurity:206`, `GetUsesticky:220`, `SetaccountHasNotChanged:237`,
-      `GetaccountHasChanged:244`, `SetFolderName:264` (private).
-      Keep the `SyncInterval` and `CopyFrom*` accessors — those **are** used.
-- [ ] `Data/OneNote.java:103` `SetBGColor()` and `:112` `GetSnippet()`. The list adapter works with
-      the `SNIPPET` map key and its own private `GetSnippetOfNote` (`NotesListAdapter.java:261`),
-      and calls `SetSnippet` at `:486`. So `SetSnippet` stays.
-- [ ] `Miscs/SwipeRevealRow.java:142` `isRevealed()` — the list tracks reveal state through the
-      static `revealedRow` reference (`:64`) instead.
-- [ ] `Miscs/NDSpinner.java:68` `isDropDownMenuShown()` and `:72` `setDropDownMenuShown()` — the
-      public field at `:34` is written internally at `:64` and never read outside the class.
-- [ ] `Miscs/SyncThread.java` — the `@StringRes int resId` field (`:44-45`), the constructor
-      parameter (`:66`) and the assignment (`:75`) are never read; the only consumer is the
-      commented-out `Notifier.Show(resId, …)` at `:79`. Drop field + parameter and update the call
-      sites in `ListActivity` / `AccountListActivity`, then delete the now-false
-      `// TODO: remove unused arguments.` at `:62`.
-      Also remove the inspection leftovers in the same file: `:37-41`
-      (`// --Commented out by Inspection …` + `ImapNotesResult res`), `:54` and `:82`
-      (commented `applicationContextRef`), `:38` `bool_to_return`.
-      Leave `:57` (`NoteDb should probably never be null`) — that one is a real note.
+- [x] `Miscs/UpdateThread.java` — private `MakeMessageWithAttachment()`, never called; the
+      attachment feature never landed (`Data/Attachment.java` was removed earlier). Its five now
+      orphaned imports (`Multipart`, `Session`, `MimeBodyPart`, `MimeMessage`, `MimeMultipart`)
+      went with it.
+- [x] `Data/ImapNotesAccount.java` — the 14 "accessors" turned out to be **commented-out blocks**
+      (`GetAccountName`, `GetUsername`/`SetUsername`, `GetPassword`/`SetPassword`,
+      `GetServer`/`SetServer`, `GetPortnum`/`SetPortnum`, `GetSecurity`, `SetSecurity` ×2,
+      `GetUsesticky`, `SetaccountHasNotChanged`, `GetaccountHasChanged`, `SetFolderName`, `Clear`,
+      `toString`, plus the `SetAccountname`/`SetUsesticky`/`SetSyncinterval` line comments).
+      Several referenced fields that no longer exist — the remaining fields are `final` and are
+      populated from `AccountManager` in the constructors, which is why setters never came back.
+- [x] `Data/OneNote.java` — `SetBGColor()` and `GetSnippet()`. `SetSnippet()` stays; the list
+      adapter uses it (`NotesListAdapter.java:486`) together with its private `GetSnippetOfNote`.
+- [x] `Miscs/SwipeRevealRow.java` — `isRevealed()`. The `revealed` field itself stays (written in
+      `concealImmediately` / `reveal`).
+- [x] `Miscs/NDSpinner.java` — `isDropDownMenuShown()` / `setDropDownMenuShown()`, and with them the
+      public field and the `performClick()` override that existed only to set it: once the accessors
+      were gone the field was write-only. `initIsDone` **is** used externally
+      (`NoteDetailActivity.java:339`) and stays.
+- [x] `Miscs/SyncThread.java` — the `@StringRes int resId` field, constructor parameter and
+      assignment (only consumer was the commented-out `Notifier.Show`), the `@StringRes` import,
+      the now-false `// TODO: remove unused arguments.`, and the 2016 `--Commented out by
+    Inspection` leftovers. One call site in `ListActivity.RefreshList` updated.
+      Consequence: `R.string.refreshing_notes_list` is now unused (§2.11).
+      Kept: `// TODO: NoteDb should probably never be null.` — that one is a real note.
 
 ### 1.3 Dead resources
 
-- [ ] `res/values/arrays.xml` — delete the whole file: `reply_entries` (`:3`) and `reply_values`
-      (`:8`) are `SettingsActivity` template leftovers, zero references.
-- [ ] `res/drawable/ic_action_add_user.xml` — orphaned when the account row/FAB became
+- [x] `res/values/arrays.xml` deleted — `reply_entries` / `reply_values` were `SettingsActivity`
+      template leftovers with zero references.
+- [x] `res/drawable/ic_action_add_user.xml` deleted — orphaned when the account row/FAB became
       `ic_action_account_add`.
-- [ ] `res/values/colors.xml:27` `ShareActionActionColor` and `:29` `transparent` — genuinely
-      unused (contrast with §3.3, where the _note_ colours only look unused).
-- [ ] `res/xml/searchable.xml` **plus** the manifest meta-data block
-      (`AndroidManifest.xml:88-91` — note the manifest's own comment: _"What is this meta-data for?
-      There doesn't seem to be any code that uses it"_). The `SearchView` is configured in code
-      (`ListActivity.configureSearchView`), and `ListActivity.java:530-537` deliberately comments
-      out `setSearchableInfo(...)`; the `ACTION_SEARCH` intent filter was dropped in the rewrite.
-      Delete the xml, the meta-data block, and the commented `SearchManager` lines at `:531-537`.
+- [x] `ShareActionActionColor` and `transparent` deleted from **both** `values/colors.xml` and
+      `values-night/colors-night.xml` (the `@android:color/transparent` in `account_setup.xml:121`
+      is the framework colour, not this one — contrast with §3.3, where the _note_ colours only
+      look unused).
+- [x] `res/xml/searchable.xml` deleted, with the manifest meta-data block and its
+      _"What is this meta-data for?"_ comment, and the commented `SearchManager` /
+      `setSearchableInfo` lines in `ListActivity.onCreateOptionsMenu`. The `SearchView` is fully
+      configured in code, and the `ACTION_SEARCH` intent filter was dropped in the rewrite.
 
-### 1.4 Stale comments (fix or delete while you are in the file)
+### 1.4 Stale comments
 
-- [ ] `// TODO Auto-generated constructor stub` / `… method stub` that describe nothing:
-      `Miscs/EditorMenuAdapter.java:53, 59, 66, 72`, `AccountConfigurationActivity.java:479`.
-- [ ] `ImapNotes3.java:88` `//FIXME - do something usefull` — resolve together with §2.1.
-- [ ] `AccountConfigurationActivity.java:332` `// TODO: find out if extras can be null.` —
-      either assert it or explain why it cannot happen.
-- [ ] `Sync/SyncUtils.java:661-668` and `ListActivity.java:530-537` — commented-out code that will
-      disappear with §1.2 and §1.3.
+- [x] The `// TODO Auto-generated constructor/method stub` comments in `Miscs/EditorMenuAdapter`
+      (×4, one of which also hid a commented-out `setOnClickListener` block referencing the
+      long-gone `mEditor` field), and in `AccountConfigurationActivity.onNothingSelected`
+      (replaced with a sentence saying why the body is empty).
+- [ ] `ImapNotes3.java:88` `//FIXME - do something usefull` — left for §2.1, which resolves it.
+- [ ] `AccountConfigurationActivity.java:332` `// TODO: find out if extras can be null.` — a real
+      open question, not generator noise; left in place.
 
 ---
 
@@ -194,8 +198,8 @@ Each item is self-contained and independently committable.
 
 ### 2.10 Small things noticed while reading
 
-- [ ] `res/values/colors.xml:25` — stray trailing `>`: `<color name="ShareActionBgColor">#F9FBE7</color>>`.
-      Harmless to AAPT, but fix it.
+- [x] `res/values/colors.xml:25` — stray trailing `>`: `<color name="ShareActionBgColor">#F9FBE7</color>>`.
+      Done together with §1.3, which edited the same lines.
 - [ ] `AccountConfigurationActivity.java:115` — string literal in `setText(...)`
       (`SetTextI18n`); move to a string resource.
 - [ ] `res/layout/note_detail.xml:13` — `InefficientWeight`: `layout_height="wrap_content"` with a
@@ -216,12 +220,14 @@ Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Webl
 - [ ] `TypographyEllipsis`: `values-fr/strings.xml:143` uses `...` instead of `…`.
 - [ ] Unused string keys (zero references anywhere, with base line numbers):
       `new_account:6`, `account_removed:11`, `remove:15`, `check_and_create_account:17`,
-      `syncing:49`, `Waiting_for_sync:53`, `txt_color:62`, `AccountList:81`, `Last_sync:82`,
-      `all_accounts:141`, `OAUTH2:196`.
+      `syncing:49`, `refreshing_notes_list:50`, `Waiting_for_sync:53`, `txt_color:62`,
+      `AccountList:81`, `Last_sync:82`, `all_accounts:141`, `OAUTH2:196`.
       Of these, `all_accounts`, `AccountList`, `new_account`, `check_and_create_account`,
       `account_removed` are **intentionally kept** (see `AGENTS.md` — deleting keys forces
-      re-translation work); `remove`, `syncing`, `Waiting_for_sync`, `txt_color`, `Last_sync` and
-      `OAUTH2` are genuine candidates for a Weblate-side cleanup.
+      re-translation work), and `refreshing_notes_list` only became unused when §1 removed the
+      `SyncThread.resId` argument, so it joins that group rather than being a new problem.
+      `remove`, `syncing`, `Waiting_for_sync`, `txt_color`, `Last_sync` and `OAUTH2` are genuine
+      candidates for a Weblate-side cleanup.
       Do **not** add `save` / `delete` to that list — `menu/detail.xml:34,40` use them.
 
 ---

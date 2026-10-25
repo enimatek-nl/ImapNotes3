@@ -100,18 +100,8 @@ public class OneNote extends HashMap<String, String> {
         this.put(UID, uid);
     }
 
-    public void SetBGColor(String bgColor) {
-        this.put(BGCOLOR, bgColor);
-    }
-
     public void SetState(String saveState) {
         this.put(SAVE_STATE, saveState);
-    }
-
-    @NonNull
-    public String GetSnippet() {
-        String snippet = this.get(SNIPPET);
-        return snippet == null ? "" : snippet;
     }
 
     public void SetSnippet(String snippet) {

@@ -85,10 +85,6 @@
             android:exported="false"
             android:launchMode="singleTop"
             android:parentActivityName=".AccountListActivity">
-            <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
-            <meta-data
-                android:name="android.app.searchable"
-                android:resource="@xml/searchable" />
         </activity>
         <activity
             android:name=".AccountConfigurationActivity"

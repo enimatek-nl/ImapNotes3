@@ -26,7 +26,6 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.StringRes;
 
 import de.niendo.ImapNotes3.Data.NotesDb;
 import de.niendo.ImapNotes3.Data.OneNote;
@@ -35,14 +34,7 @@ import de.niendo.ImapNotes3.NotesListAdapter;
 import java.util.ArrayList;
 
 public class SyncThread extends AsyncTask<Object, Void, Boolean> {
-    // --Commented out by Inspection (11/26/16 11:48 PM):boolean bool_to_return;
-// --Commented out by Inspection START (11/26/16 11:48 PM):
-//    @NonNull
-//    ImapNotesResult res = new ImapNotesResult();
-// --Commented out by Inspection STOP (11/26/16 11:48 PM)
     private static final String TAG = "SyncThread";
-    private final @StringRes
-    int resId;
     private final NotesListAdapter adapter;
     private final ArrayList<OneNote> notesList;
     private final String sortOrder;
@@ -50,7 +42,6 @@ public class SyncThread extends AsyncTask<Object, Void, Boolean> {
     private final CharSequence filterString;
     private final String accountName;
     private ArrayList<OneNote> myNoteList;
-    //private final WeakReference<Context> applicationContextRef;
 
     /**
      * SQLite database that holds status information about the notes.
@@ -59,26 +50,20 @@ public class SyncThread extends AsyncTask<Object, Void, Boolean> {
     @NonNull
     private final NotesDb storedNotes;
 
-    // TODO: remove unused arguments.
     public SyncThread(String accountName,
                       ArrayList<OneNote> noteList,
                       NotesListAdapter listToView,
-                      @StringRes int resId,
                       String sortOrder,
                       String[] hashFilter,
                       CharSequence filterString,
                       Context context) {
-        //this.imapFolder = imapFolder;
         this.accountName = accountName;
         this.notesList = noteList;
         this.adapter = listToView;
-        this.resId = resId;
         this.sortOrder = sortOrder;
         this.hashFilter = hashFilter;
         this.filterString = filterString;
-        //Notifier.Show(resId, applicationContext, 1);
         this.storedNotes = NotesDb.getInstance(context);
-        //this applicationContextRef= new WeakReference<>(context);;
     }
 
     // Do not pass arguments via execute; the object is never reused so it is quite safe to pass

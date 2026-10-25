@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
 
     <color name="blue">#2E3E6B</color>
@@ -25,9 +25,7 @@
 
     <color name="ShareActionBgColor">#2F2F2F</color>
     <color name="ShareActionTxtColor">@color/ActionTxtColor</color>
-    <color name="ShareActionActionColor">#2F7F7F</color>
 
-    <color name="transparent">#00000000</color>
     <color name="colorSurface">#3C3C3A</color>
 
     <color name="ResultOkColor">#6DD58C</color>

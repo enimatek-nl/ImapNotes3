@@ -129,22 +129,6 @@ public class ImapNotesAccount {
         }
     }
 
-
-    /*
-    @NonNull
-    public String toString() {
-        return this.accountName + ":" + this.username + ":" + this.password + ":"
-                + this.server + ":" + this.portnum + ":" + this.security + ":"
-                + this.usesticky + ":" + this.imapfolder + ":" + Boolean.toString(this.accountHasChanged);
-    }*/
-/*
-
-    public String GetAccountName() {
-        return accountName;
-    }
-
-*/
-
     @NonNull
     public String GetCopyImapFolderName() {
         if (copyImapFolderName == null || copyImapFolderName.isEmpty() || !copyImapFolder.equals("true"))
@@ -158,95 +142,6 @@ public class ImapNotesAccount {
         return this.account;
     }
 
-    //public void SetAccountname(String accountName) {
-    //    this.accountName = accountName;
-    //}
-/*
-
-    @NonNull
-    public String GetUsername() {
-        return this.username;
-    }
-
-    public void SetUsername(@NonNull String Username) {
-        this.username = Username;
-    }
-*/
-
-  /*  @NonNull
-    public String GetPassword() {
-        return this.password;
-    }
-
-    public void SetPassword(@NonNull String Password) {
-
-        this.password = Password;
-    }
-
-    @NonNull
-    public String GetServer() {
-        return this.server;
-    }
-
-    public void SetServer(@NonNull String Server) {
-        this.server = Server;
-    }
-*/
-  /*  @NonNull
-    public String GetPortnum() {
-        return this.portnum;
-    }
-
-    public void SetPortnum(@NonNull String Portnum) {
-
-        this.portnum = Portnum;
-    }
-
-    @NonNull
-    public Security GetSecurity() {
-        return security;
-    }
-
-    public void SetSecurity(@NonNull Security security) {
-
-        this.security = security;
-    }
-
-    public void SetSecurity(String security) {
-        Log.d(TAG, "Set: " + security);
-        SetSecurity(Security.from(security));
-    }
-
-    public boolean GetUsesticky() {
-        return this.usesticky;
-    }
-*/
-    //public void SetUsesticky(boolean Usesticky) {
-    //    this.usesticky = Usesticky;
-    //}
-
-   /* public String GetSyncinterval() {
-        return this.syncInterval;
-    }
-*/
-    //public void SetSyncinterval(String Syncinterval) {
-    //    this.syncInterval = Syncinterval;
-    //}
-
-    /*
-    public void SetaccountHasNotChanged() {
-        this.accountHasChanged = false;
-    }
-    */
-/*
-
-    @NonNull
-    public Boolean GetaccountHasChanged() {
-        return this.accountHasChanged;
-    }
-*/
-
-
     @NonNull
     public String GetImapFolder() {
         if (this.imapFolder.isEmpty())
@@ -258,24 +153,4 @@ public class ImapNotesAccount {
     public File GetRootDirAccount() {
         return rootDirAccount;
     }
-
-/*
-
-    private void SetFolderName(@NonNull String folder) {
-        this.imapfolder = folder;
-    }
-
-*/
-
-/*
-    public void Clear() {
-        this.username = null;
-        this.password = null;
-        this.server = null;
-        this.portnum = null;
-        this.security = Security.None;
-        this.usesticky = false;
-        this.imapfolder = null;
-        this.accountHasChanged = false;
-    }*/
 }

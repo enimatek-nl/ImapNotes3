@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <color name="blue">#72AADC</color>
     <color name="white">#FFFFFFFF</color>
@@ -22,11 +22,9 @@
     <color name="EditorTxtColor">@color/ActionTxtColor</color>
     <color name="EditorBgColorDefault">@color/none</color>
 
-    <color name="ShareActionBgColor">#F9FBE7</color>>
+    <color name="ShareActionBgColor">#F9FBE7</color>
     <color name="ShareActionTxtColor">@color/ActionTxtColor</color>
-    <color name="ShareActionActionColor">#2F7F7F</color>
 
-    <color name="transparent">#00000000</color>
     <color name="colorSurface">#AAAAAA</color>
 
     <color name="ResultOkColor">#1B7F5C</color>

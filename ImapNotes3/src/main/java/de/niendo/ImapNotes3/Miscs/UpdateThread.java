@@ -51,13 +51,8 @@ import java.util.Locale;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
-import javax.mail.Multipart;
-import javax.mail.Session;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MailDateFormat;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 
 // TODO: move arguments from execute to constructor.
 public class UpdateThread extends AsyncTask<Object, Void, Boolean> {
@@ -309,41 +304,6 @@ typesafe.  Make them final to prevent accidental reuse.
             //noinspection ResultOfMethodCallIgnored
             from.renameTo(to);
         }
-    }
-
-    @NonNull
-    private Message MakeMessageWithAttachment(String subject,
-                                              String message,
-                                              String filePath,
-                                              Session session)
-            throws IOException, MessagingException {
-
-        Message msg = new MimeMessage(session);
-
-
-        msg.setSubject(subject);
-        msg.setSentDate(new Date());
-
-        // creates message part
-        MimeBodyPart messageBodyPart = new MimeBodyPart();
-        messageBodyPart.setContent(message, "text/html");
-
-        // creates multi-part
-        Multipart multipart = new MimeMultipart();
-        multipart.addBodyPart(messageBodyPart);
-
-        // add attachment
-
-        MimeBodyPart attachPart = new MimeBodyPart();
-
-        attachPart.attachFile(filePath);
-
-
-        multipart.addBodyPart(attachPart);
-
-        // sets the multi-part as e-mail's content
-        msg.setContent(multipart);
-        return msg;
     }
 
     private void WriteMailToNew(@NonNull OneNote note,

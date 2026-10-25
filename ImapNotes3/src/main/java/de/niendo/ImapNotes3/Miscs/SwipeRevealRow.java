@@ -137,13 +137,6 @@ public class SwipeRevealRow extends FrameLayout {
     }
 
     /**
-     * Whether the actions of this row are currently visible.
-     */
-    public boolean isRevealed() {
-        return revealed;
-    }
-
-    /**
      * Moves the content by {@code dx}, never past the closed and the fully open position. Called for
      * every move of a horizontal drag.
      */

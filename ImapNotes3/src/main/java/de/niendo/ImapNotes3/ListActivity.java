@@ -443,7 +443,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                     accountName,
                     noteList,
                     listToView,
-                    R.string.refreshing_notes_list,
                     getSortOrder(),
                     hashFilter,
                     mFilterString,
@@ -526,16 +525,9 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
         MenuBuilder m = (MenuBuilder) menu;
         m.setOptionalIconsVisible(true);
 
-        // Associate searchable configuration with the SearchView
-        // disable SearchManager and setSearchableInfo .. it seems confusing and useless
-        //SearchManager searchManager =
-        //        (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         MenuItem menuItem = menu.findItem(R.id.search);
         SearchView searchView = (SearchView) menuItem.getActionView();
         searchView.setQueryHint(getText(R.string.search_any_keyword));
-
-        // searchView.setSearchableInfo(
-        //         searchManager.getSearchableInfo(getComponentName()));
         SearchView.OnQueryTextListener textChangeListener = new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextChange(String newText) {

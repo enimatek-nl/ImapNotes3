@@ -31,7 +31,6 @@ import android.widget.Spinner;
  */
 @SuppressLint("AppCompatCustomView")
 public class NDSpinner extends Spinner {
-    public boolean isDropDownMenuShown = false;
     public boolean initIsDone = false;
 
     public NDSpinner(Context context) {
@@ -57,20 +56,6 @@ public class NDSpinner extends Spinner {
             // Spinner does not call the OnItemSelectedListener if the same item is selected, so do it manually now
             getOnItemSelectedListener().onItemSelected(this, getSelectedView(), position, getSelectedItemId());
         }
-    }
-
-    @Override
-    public boolean performClick() {
-        this.isDropDownMenuShown = true; //Flag to indicate the spinner menu is shown
-        return super.performClick();
-    }
-
-    public boolean isDropDownMenuShown() {
-        return isDropDownMenuShown;
-    }
-
-    public void setDropDownMenuShown(boolean isDropDownMenuShown) {
-        this.isDropDownMenuShown = isDropDownMenuShown;
     }
 
     @Override

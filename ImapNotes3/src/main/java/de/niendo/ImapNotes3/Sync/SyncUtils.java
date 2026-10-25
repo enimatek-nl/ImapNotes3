@@ -655,17 +655,4 @@ public class SyncUtils {
         }
     }
 
-    @Override
-    protected void finalize() {
-     /*   if (IsConnected()) {
-            try {
-                store.close();
-            } catch (MessagingException e) {
-                Log.e(TAG, "store.close() failed", e);
-            }
-        }
-
-      */
-    }
-
 }

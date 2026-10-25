@@ -50,49 +50,25 @@ public class EditorMenuAdapter extends ArrayAdapter<String> {
         mSpinnerResourceId = spinnerResourceId;
         mContext = context;
         mNoteDetailActivity = noteDetailActivity;
-// TODO Auto-generated constructor stub
     }
 
     @Override
     public View getDropDownView(int position, View convertView,
                                 @NonNull ViewGroup parent) {
-// TODO Auto-generated method stub
         return getCustomView(position, convertView, parent);
     }
 
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-// TODO Auto-generated method stub
         return getCustomView(position, convertView, parent);
     }
 
 
     public View getCustomView(int position, View convertView, ViewGroup parent) {
-// TODO Auto-generated method stub
-//return super.getView(position, convertView, parent);
         View row = mInflater.inflate(mTextViewResourceId, parent, false);
         ImageView icon = row.findViewById(R.id.row_icon_dummy);
         NDSpinner spinner;
-            /*
-            row.setOnClickListener(new View.OnClickListener() {
-                                       @Override
-                                       public void onClick(View v) {
-                                           switch (mSpinnerResourceId) {
-                                               case R.id.action_format:
-                                                   switch (position) {
-                                                       case 0:
-                                                           mEditor.setBold();
-                                                       case 1:
-                                                           mEditor.setItalic();
-                                                   }
-                                           }
-                                       }
-
-
-                                   });
-        //row.setOnLongClickListener(v -> mEditor.setItalic());
-*/
         switch (mSpinnerResourceId) {
             case R.id.action_format:
                 switch (position) {
@@ -370,4 +346,3 @@ public class EditorMenuAdapter extends ArrayAdapter<String> {
         return row;
     }
 }
-
