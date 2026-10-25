@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="new_account">Новый счет</string>
     <string name="new_note">Новая записка</string>
     <string name="refresh">Обновить</string>
@@ -102,8 +102,8 @@
     <string name="section">Секция</string>
     <string name="off">Выкл</string>
     <string name="link_alt_text">Альтернативный текст</string>
-    <string name="link_image_width">Ширина (% или px)</string>
-    <string name="link_image_height">Высота (% или px)</string>
+    <string name="link_image_width" tools:ignore="StringFormatCount">Ширина (% или px)</string>
+    <string name="link_image_height" tools:ignore="StringFormatCount">Высота (% или px)</string>
     <string name="image_size_relative">Размер изображения относительно ширины страницы</string>
     <string name="file_size_allowed">Разрешены только файлы меньше %1$.1f. (уменьшение резолюции)</string>
     <string name="file_size_info">Размер файла %1$.1f MB. (только %2$.1f MB разрешен)</string>
@@ -181,4 +181,6 @@
     <string name="save_note_failed">сохранить заметку не удалось по неизвестным причинам</string>
     <string name="copyImapFolderName">Копировать заметки в этой папке перед сохранением или удалением</string>
     <string name="Ukrainian">Украинский</string>
+    <string name="next_item">Следующий элемент</string>
+    <string name="previous_item">Предыдущий элемент</string>
 </resources>

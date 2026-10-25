@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="new_note">Novinky</string>
     <string name="account_removed">Byl odstraněn účet</string>
     <string name="quotation_marks_not_allowed">Ochranné známky nejsou povoleny v názvu účtu</string>
@@ -112,7 +112,7 @@
     <string name="intent_save_as_note">Uložit jako poznámka</string>
     <string name="AccountList">Seznam účtů</string>
     <string name="select_link_youtube">Vyberte odkaz na youtube video</string>
-    <string name="link_image_height">Výška (% nebo px)</string>
+    <string name="link_image_height" tools:ignore="StringFormatCount">Výška (% nebo px)</string>
     <string name="image_size_relative">Velikost obrázku je vzhledem k šířce stránky</string>
     <string name="insert_hashtag_syntax">Není platný HashTag</string>
     <string name="Last_sync">"Poslední synchronizace: "</string>
@@ -129,7 +129,7 @@
     <string name="file_size_allowed">Pouze soubory menší než %1$.1f MB povoleno. (snížení rozlišení)</string>
     <string name="file_size_info">Velikost souboru %1$.1f MB. (pouze %2$.1f MB povoleno)</string>
     <string name="link_title">Název odkazu</string>
-    <string name="link_image_width">Šířka (% nebo px)</string>
+    <string name="link_image_width" tools:ignore="StringFormatCount">Šířka (% nebo px)</string>
     <string name="search_any_keyword">Zobrazit všechny klíčové slovo.</string>
     <string name="link_alt_text">Alternativní text</string>
     <string name="insert_hashtag">Vložit HashTag</string>
@@ -178,4 +178,6 @@
     <string name="extendedAccountSettings">Rozšířená nastavení</string>
     <string name="russian">Ruština</string>
     <string name="chinese">Čínština</string>
+    <string name="next_item">Další položka</string>
+    <string name="previous_item">Předchozí položka</string>
 </resources>

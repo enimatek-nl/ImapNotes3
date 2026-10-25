@@ -685,9 +685,6 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
             case R.id.refresh:
                 TriggerSync(true);
                 return true;
-            case R.id.newnote:
-                newNote();
-                return true;
             case R.id.sort_date:
             case R.id.sort_title:
             case R.id.sort_color: {

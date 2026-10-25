@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name" translatable="false">ImapNotes3</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="new_account">新账户</string>
     <string name="new_note">新笔记</string>
     <string name="refresh">刷新</string>
@@ -114,8 +113,8 @@
     <string name="insert_link_image">插入链接的图片</string>
     <string name="link_image_url">图片 URL</string>
     <string name="link_alt_text">备选文本</string>
-    <string name="link_image_width">宽度（百分比或像素）</string>
-    <string name="link_image_height">高度（百分比或像素）</string>
+    <string name="link_image_width" tools:ignore="StringFormatCount">宽度（百分比或像素）</string>
+    <string name="link_image_height" tools:ignore="StringFormatCount">高度（百分比或像素）</string>
     <string name="image_size_relative">图片尺寸是相对于页面宽度而言的</string>
     <string name="file_size_allowed">只允许小于 %1$.1f MB 的文件。（降低分辨率）</string>
     <string name="file_size_info">文件大小为 %1$.1f MB。（最多只允许 %2$.1f MB ）</string>
@@ -185,4 +184,6 @@
     <string name="save_note_failed">保存笔记因未知原因失败了</string>
     <string name="Ukrainian">乌克兰语</string>
     <string name="OAUTH2">OAuth2/XOAuth2</string>
+    <string name="next_item">下一项</string>
+    <string name="previous_item">上一项</string>
 </resources>

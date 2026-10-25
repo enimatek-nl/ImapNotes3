@@ -19,18 +19,15 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew assembleDebug
 ```
 
-Current (after §5, 2026-10-25): **195 errors / 121 warnings**, and **every remaining error is a
-`MissingTranslation`** — base-English strings Weblate has not translated yet, i.e. expected noise
-here (the 3 `UseAppTint` errors are gone, and the two new base keys of §2.5 added 2 to the count).
-Warnings went 138 → 134 in §1 and 134 → 121 in §2. The 13 that §2 removed: `UseAppTint` was an
-error, and the warnings `ClickableViewAccessibility`, `GestureBackNavigation`, `HardcodedText` ×3,
-`AlwaysShowAction`, `UnusedAttribute`, `InefficientWeight`, `Overdraw`, `SetTextI18n`, `RtlEnabled`
-and `StaticFieldLeak` ×2 are fixed or deliberately suppressed.
-What is left: `NonConstantResourceId` 84, `UnusedResources` 16, `StringFormatCount` 6,
-`Untranslatable` 3, `Typos` 2, `MonochromeLauncherIcon` 2, and one each of
-`TypographyEllipsis`, `StaticFieldLeak`, `ScopedStorage`, `OldTargetApi`, `NewerVersionAvailable`,
+Current (after §5 and the Weblate hand-over, 2026-10-25): **195 errors / 108 warnings**, and
+**every remaining error is a `MissingTranslation`** — base-English strings not yet present in one or
+more of the 15 locale files. Expected while translations are filled in by hand (see §2.11), not
+breakage. Warnings have come down 138 → 134 (§1) → 121 (§2) → 108 (§2.11, the locale findings fixed
+by hand now that the files are edited directly).
+What is left: `NonConstantResourceId` 83, `UnusedResources` 16, `MonochromeLauncherIcon` 2, and one
+each of `StaticFieldLeak`, `ScopedStorage`, `OldTargetApi`, `NewerVersionAvailable`,
 `IconMissingDensityFolder`, `GradleDynamicVersion`, `AndroidGradlePluginVersion` — all of them are
-either §3 (lint config / dependencies) or §2.11 (Weblate).
+§3 (lint config / dependencies).
 
 `lintDebug` fails the task on findings by design — a non-zero exit is not a broken build. Read the
 report file, not the exit code, until §3.1 lands.
@@ -153,8 +150,8 @@ could not be done safely moved to §4.
 ### 2.5 Menus: hardcoded titles and inconsistent search widget
 
 - [x] `menu/detail.xml` — `@string/search` (it existed), plus two new base-English keys,
-      `next_item` and `previous_item` (no locale had anything similar). Weblate fills the
-      translations; those two keys are the +2 in _Baseline_.
+      `next_item` and `previous_item` (no locale had anything similar). Those two keys are the +2 in
+      _Baseline_; they are now translated by hand (§2.11).
 - [x] `menu/list.xml` now uses `androidx.appcompat.widget.SearchView` — the class
       `ListActivity.onCreateOptionsMenu` imports, which was switched to appcompat accordingly.
 - [x] `showAsAction="always"` **kept** on the three editor search items, documented with
@@ -167,8 +164,9 @@ could not be done safely moved to §4.
 - [x] `formatted="false"` on `link_image_width` / `link_image_height` turned the base string into a
       zero-argument one, so every locale that keeps a bare `%` started to warn: 6 findings became 12.
       Reverted; the base strings now only carry a comment naming the offending locales.
-- [ ] The real fix is on Weblate (§2.11): `values-ru:105,106`, `values-cs:115,132` and
-      `values-zh-rCN:117,118` escape the percent signs as `%%`, and lint compares against them.
+- [x] Fixed by hand in §2.11: the `values-ru`, `values-cs` and `values-zh-rCN` translations carry
+      `tools:ignore="StringFormatCount"` — the `%` is a literal (the hints are never formatted), and
+      it is the base's "or" that accidentally parses as a format argument, not those locales.
 
 ### 2.7 Context leaks (`StaticFieldLeak` × 3)
 
@@ -220,30 +218,35 @@ could not be done safely moved to §4.
 - [x] `account_setup.xml` — `tools:ignore="UnusedAttribute"` on `tooltipText` (API 26 attribute in a
       minSdk 25 app; it is simply ignored below 26).
 
-### 2.11 Findings inside translations — fix via Weblate, never by hand
+### 2.11 Findings inside translations — fixed by hand (this fork owns the locale files)
 
-Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Weblate:
+This fork no longer routes translations through Weblate (see `AGENTS.md`), so the
+`values-*/strings.xml` files are edited directly. Everything below is fixed except the unused-key
+cleanup, which is a judgement call and stays open.
 
-- [ ] `app_name` is `translatable="false"` in base but is translated in `values-de:3`,
-      `values-nb:3`, `values-zh-rCN:3` (`Untranslatable`).
-- [ ] `Typos`: `values-nb/strings.xml:51` "Internet" → "Internett"; `values-es/strings.xml:55`
-      "Ultimo" → "Último".
-- [ ] `TypographyEllipsis`: `values-fr/strings.xml:143` uses `...` instead of `…`.
-- [ ] Percent signs in `link_image_width` / `link_image_height`: `values-ru:105,106`,
-      `values-cs:115,132`, `values-zh-rCN:117,118` escape them as `%%` while other locales keep a
-      bare `%`. The strings are only ever used as EditText hints and are never formatted, so a single
-      `%` is right — see §2.6 for why the base-side `formatted="false"` is not the answer.
-- [ ] New keys to translate: `next_item`, `previous_item` (note-editor search navigation).
+- [x] `app_name` is `translatable="false"` in base but carried a redundant identical copy in
+      `values-de`, `values-nb` and `values-zh-rCN` (`Untranslatable` ×3). The three copies are
+      removed; the base value is used everywhere.
+- [x] `Typos`: `values-nb` "Internet" → "Internett"; `values-es` "Ultimo" → "Último".
+- [x] `TypographyEllipsis`: `values-fr` `search_any_keyword` `...` → `…`.
+- [x] Percent signs in `link_image_width` / `link_image_height` (`StringFormatCount` ×6): the `%` is
+      a literal (the hints are never formatted), but the base's "or" accidentally parses as a format
+      argument while ru/cs/zh do not, so lint flagged those three. They now carry
+      `tools:ignore="StringFormatCount"`, with a note on the base strings.
+- [x] New keys `next_item` / `previous_item` (from §2.5) translated into the ten maintained locales
+      (de, fr, es, it, pt, ru, zh-rCN, cs, ca, nb). They remain missing only in the five empty
+      locales (hi, bn, ta, ja, pl), so `MissingTranslation` still lists them.
 - [ ] Unused string keys (zero references anywhere, with base line numbers):
-      `new_account:6`, `account_removed:13`, `remove:17`, `check_and_create_account:19`,
-      `syncing:51`, `refreshing_notes_list:52`, `Waiting_for_sync:55`, `txt_color:64`,
-      `AccountList:83`, `Last_sync:84`, `all_accounts:145`, `OAUTH2:200`.
+      `new_account`, `account_removed`, `remove`, `check_and_create_account`,
+      `syncing`, `refreshing_notes_list`, `Waiting_for_sync`, `txt_color`,
+      `AccountList`, `Last_sync`, `all_accounts`, `OAUTH2`.
       Of these, `all_accounts`, `AccountList`, `new_account`, `check_and_create_account`,
       `account_removed` are **intentionally kept** (see `AGENTS.md` — deleting keys forces
       re-translation work), and `refreshing_notes_list` only became unused when §1 removed the
       `SyncThread.resId` argument, so it joins that group rather than being a new problem.
       `remove`, `syncing`, `Waiting_for_sync`, `txt_color`, `Last_sync` and `OAUTH2` are genuine
-      candidates for a Weblate-side cleanup.
+      candidates for a cleanup (safe now that we edit the files directly; `OAUTH2` is tied to the §4
+      decision).
       Do **not** add `save` / `delete` to that list — `menu/detail.xml` uses them.
 
 ---
@@ -323,6 +326,11 @@ Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Webl
 - [ ] **Monochrome launcher icon** (`MonochromeLauncherIcon` ×2): needs a flat silhouette layer, i.e.
       real artwork (`art/icons/ic_launcher_foreground*.svg` are filter-heavy Inkscape files, the
       shipped foregrounds are PNGs).
+- [ ] **The notes list has no empty state.** `account_list.xml` has `@+id/emptyAccounts`, `main.xml`
+      has nothing, and `ListActivity` never calls `setEmptyView`. Creating a note now lives only in the
+      FAB (the duplicate "New note" entry was removed from `menu/list.xml`, together with the orphaned
+      `ic_action_new` drawable), so a freshly added or empty account shows a blank screen with a red
+      plus and no hint that pulling down loads the mailbox.
 - [ ] `Miscs/SmtpServerNameFinder.java` is wired to the account form only:
       `AccountConfigurationActivity.java:261` fills the server field from the e-mail domain.
       Confirm that is the intended UX, or the class is doing less than it looks like.
@@ -379,7 +387,7 @@ that one moved to §4.
 - [ ] New, left open: the debug-report subject in `SettingsActivity` is built by concatenation
       (`"Logcat content for " + Utilities.FullApplicationName + " debugging"`) and is user-visible. A
       proper fix needs a `%1$s` format string, i.e. translation surface, so it should go in with the
-      next Weblate round (§2.11).
+      next translation pass (§2.11).
 
 ## Traps — do not "clean" these
 
@@ -392,7 +400,9 @@ that one moved to §4.
   `values-night/colors-night.xml`.
 - `NonConstantResourceId` and the note-colour `UnusedResources` warnings are false positives —
   see §3.2 and §3.3.
-- Never hand-edit `values-*/strings.xml` (15+ locales, managed on Weblate) — see §2.11.
+- The locale files (`values-*/strings.xml`) are edited **directly** now — there is no Weblate
+  round-trip to conflict with. Base `values/strings.xml` is the canonical key set; add new keys there
+  first, then to the locales you maintain — see §2.11.
 - `keystore.jks` is gitignored and absent while `build.gradle` commits plaintext keystore passwords
   (legacy F-Droid-style setup, and _both_ build types use that signingConfig). Do not "fix" either
   silently; see `AGENTS.md` for the local debug-keystore workaround.

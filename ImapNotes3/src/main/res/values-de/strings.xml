@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">ImapNotes3</string>
     <string name="new_account">Neues Konto</string>
     <string name="new_note">Neue Notiz</string>
     <string name="refresh">Abgleichen</string>
@@ -184,4 +183,6 @@
     <string name="catalan">Katalanisch</string>
     <string name="save_note_failed">Speichern der Notiz fehlgeschlagen.</string>
     <string name="Ukrainian">Ukrainisch</string>
+    <string name="next_item">Nächstes Element</string>
+    <string name="previous_item">Vorheriges Element</string>
 </resources>

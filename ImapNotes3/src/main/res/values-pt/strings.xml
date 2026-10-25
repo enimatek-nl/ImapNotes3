@@ -161,4 +161,6 @@
     <string name="create_archive">Criar backup:</string>
     <string name="settings">Definições</string>
     <string name="miscellaneous">Diversos</string>
+    <string name="next_item">Item seguente</string>
+    <string name="previous_item">Item anterior</string>
 </resources>

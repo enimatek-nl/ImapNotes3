@@ -140,7 +140,7 @@
     <string name="section">Section</string>
     <string name="select_link_audio">Sélectionnez un lien vers un stream audio</string>
     <string name="select_one_account">Sélectionnez un compte/bloc-notes</string>
-    <string name="search_any_keyword">Rechercher n\'importe quel mot clé...</string>
+    <string name="search_any_keyword">Rechercher n\'importe quel mot clé…</string>
     <string name="make_archive">Créer une sauvegarde</string>
     <string name="intent_import_note">Importer note(s)</string>
     <string name="importing">Importation…</string>
@@ -182,4 +182,6 @@
     <string name="save_note_failed">sauver la note a échoué pour des raisons inconnues</string>
     <string name="Ukrainian">Ukrainien</string>
     <string name="OAUTH2">OAuth2/XOAuth2</string>
+    <string name="next_item">Élément suivant</string>
+    <string name="previous_item">Élément précédent</string>
 </resources>

@@ -154,4 +154,6 @@
     <string name="file_size_allowed">Permet només fitxers menors a %1$.1f MB. (Redueix la resolució)</string>
     <string name="settings">Configuració</string>
     <string name="appearance">Aparença</string>
+    <string name="next_item">Element següent</string>
+    <string name="previous_item">Element anterior</string>
 </resources>

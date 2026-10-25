@@ -181,4 +181,6 @@
     <string name="translation">Traduzione</string>
     <string name="french">Francese</string>
     <string name="spanish">Spagnolo</string>
+    <string name="next_item">Elemento successivo</string>
+    <string name="previous_item">Elemento precedente</string>
 </resources>
