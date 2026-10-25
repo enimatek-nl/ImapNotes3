@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--The rows of the editor menu spinners. Their background is deliberate and stays: a spinner
+    popup is a window of its own, it does not inherit the colour of the editor strip it opens from.
+    (tools:ignore for the Overdraw lint check.)-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
     android:background="@color/EditorMenuBgColor"
+    tools:ignore="Overdraw"
     android:orientation="horizontal"
     android:padding="5dp">
 

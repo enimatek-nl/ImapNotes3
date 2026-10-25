@@ -4,9 +4,10 @@ Result of a dead-code / boy-scout scan on 2026-10-24, after the account-first na
 (`v1.4-07` / `10407`). Every "unused" verdict was checked against real call sites, and every line
 reference was re-verified against the current files.
 
-**Work top to bottom.** §1 is deletion with no behaviour change. §2 are small real fixes.
-§3 is lint configuration — worth doing early, because it turns the numbers in _Baseline_ into a
-regression detector for all later work. §4 is deliberately deferred.
+**Work top to bottom.** §1 (dead code and resources) and §2 (small real fixes) are done. §3 is lint
+configuration — worth doing next, because it turns the numbers in _Baseline_ into a regression
+detector for all later work. §4 is deliberately deferred (design, device, or artwork needed), and §5
+collects what the scan and the §1/§2 work turned up on the way.
 
 ## Baseline (measure before and after)
 
@@ -18,13 +19,18 @@ export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew assembleDebug
 ```
 
-Current (after §1, 2026-10-24): **193 errors / 134 warnings.** 190 of the errors are
-`MissingTranslation` (base-English strings Weblate has not translated yet — expected noise here),
-so the only real errors are the **3 `UseAppTint` ones, fixed by §2.3**.
-§1 took the warnings from 138 to 134: 5 `UnusedResources` findings disappeared
-(`arrays.xml` ×2, `ic_action_add_user`, `ShareActionActionColor`, `transparent`) and one appeared
-(`refreshing_notes_list`, orphaned by the `SyncThread.resId` removal — see §2.11).
-After §2.3 the expectation is _exactly_ 190 errors and zero real errors.
+Current (after §2, 2026-10-25): **192 errors / 121 warnings**, and **every remaining error is a
+`MissingTranslation`** — base-English strings Weblate has not translated yet, i.e. expected noise
+here (the 3 `UseAppTint` errors are gone, and the two new base keys of §2.5 added 2 to the count).
+Warnings went 138 → 134 in §1 and 134 → 121 in §2. The 13 that §2 removed: `UseAppTint` was an
+error, and the warnings `ClickableViewAccessibility`, `GestureBackNavigation`, `HardcodedText` ×3,
+`AlwaysShowAction`, `UnusedAttribute`, `InefficientWeight`, `Overdraw`, `SetTextI18n`, `RtlEnabled`
+and `StaticFieldLeak` ×2 are fixed or deliberately suppressed.
+What is left: `NonConstantResourceId` 84, `UnusedResources` 16, `StringFormatCount` 6,
+`Untranslatable` 3, `Typos` 2, `MonochromeLauncherIcon` 2, and one each of
+`TypographyEllipsis`, `StaticFieldLeak`, `ScopedStorage`, `OldTargetApi`, `NewerVersionAvailable`,
+`IconMissingDensityFolder`, `GradleDynamicVersion`, `AndroidGradlePluginVersion` — all of them are
+either §3 (lint config / dependencies) or §2.11 (Weblate).
 
 `lintDebug` fails the task on findings by design — a non-zero exit is not a broken build. Read the
 report file, not the exit code, until §3.1 lands.
@@ -33,8 +39,8 @@ report file, not the exit code, until §3.1 lands.
 
 ## 1. Dead code and dead resources — ✅ done 2026-10-24
 
-All of §1 is committed to the working tree; `assembleDebug` builds and lint went 138 → 134 warnings
-with no new errors (see _Baseline_). Kept here as a record of what was removed.
+All of §1 is committed as `156c7fe`; `assembleDebug` builds and lint went 138 → 134 warnings with
+no new errors (see _Baseline_). Kept here as a record of what was removed.
 
 ### 1.1 Whole dead class
 
@@ -93,121 +99,126 @@ with no new errors (see _Baseline_). Kept here as a record of what was removed.
       (×4, one of which also hid a commented-out `setOnClickListener` block referencing the
       long-gone `mEditor` field), and in `AccountConfigurationActivity.onNothingSelected`
       (replaced with a sentence saying why the body is empty).
-- [ ] `ImapNotes3.java:88` `//FIXME - do something usefull` — left for §2.1, which resolves it.
-- [ ] `AccountConfigurationActivity.java:332` `// TODO: find out if extras can be null.` — a real
+- [x] `ImapNotes3.java` `//FIXME - do something usefull` — resolved by §2.1.
+- [ ] `AccountConfigurationActivity.java:337` `// TODO: find out if extras can be null.` — a real
       open question, not generator noise; left in place.
 
 ---
 
-## 2. Small real fixes (behaviour, correctness, leaks)
+## 2. Small real fixes (behaviour, correctness, leaks) — ✅ done 2026-10-25
+
+`assembleDebug` builds and lint is 192 errors / 121 warnings with no real errors left (see
+_Baseline_). Four items came out differently than first scoped; each says why, and the parts that
+could not be done safely moved to §4.
 
 ### 2.1 The uncaught-exception handler swallows the crash it records
 
-- [ ] `ImapNotes3.java:87-97`: `System.exit(2)` at `:93` runs **before**
-      `defaultUEH.uncaughtException(thread, e)` at `:96`, so the re-throw is unreachable and the
-      default handler never runs (no logcat stacktrace, no DropBox entry, no crash dialog). The
-      surrounding comments already doubt `System.exit()` is right, and a
-      `finishAndRemoveTask()` variant sits commented out. Decide one behaviour and make the code
-      match the comment — probably: store the stacktrace, then call the default handler and let the
-      system kill the process.
+- [x] `ImapNotes3.java` — `System.exit(2)` deleted, so the previous default handler really runs and
+      the logcat stacktrace, DropBox entry and crash dialog survive; the stacktrace is still stored
+      for the debug report. The `//FIXME - do something usefull` is resolved.
 
 ### 2.2 `ListActivity`: listener never unregistered, and destructive work in a UI callback
 
-- [ ] `ListActivity.java:263` registers `AccountsUpdateListener` (inner class at `:920`), but
-      `onDestroy` (`:147-151`) only unregisters the `ContentObserver` (`:149`) — the listener
-      outlives the activity.
-      Worse, `onAccountsUpdated` performs filesystem cleanup:
-      `FileUtils.deleteDirectory(ImapNotes3.GetAccountDir(s))` at `:947`. That removal is now owned
-      by `SyncUtils.RemoveAccount`, reached through
-      `ImapNotesAuthenticatorService.Authenticator.getAccountRemovalAllowed` (see `AGENTS.md`), and
-      doing it from a UI callback duplicates it — a leftover from before account deletion moved.
-      `AccountListActivity` does this correctly: `addOnAccountsUpdatedListener` in `onStart:137`,
-      `removeOnAccountsUpdatedListener` in `onStop:145`.
-      **Delete the listener from `ListActivity`** (and the `import android.accounts.OnAccountsUpdateListener:30`),
-      then re-check the refresh path around `:789`, whose comment still refers to it.
+- [x] `FileUtils.deleteDirectory(ImapNotes3.GetAccountDir(s))` removed from `onAccountsUpdated` —
+      `SyncUtils.RemoveAccount` (reached through
+      `ImapNotesAuthenticatorService.Authenticator.getAccountRemovalAllowed`) already owns that
+      deletion, so the listener duplicated it and did filesystem I/O on the main thread. The
+      `FileUtils` and `IOException` imports went with it; the comment says who owns the deletion.
+- [x] The listener is held in a field and unregistered in `onDestroy`, next to the `ContentObserver`,
+      so it no longer outlives the activity.
+- **Deviation — it could not be deleted outright.** It is the only thing filling the static
+      `accounts` / `accountList` cache that this screen and `getAccountList()` read; without it
+      `RefreshScopedList()` would bail at its `accountList.contains(scopedAccountName)` guard and the
+      screen would stay empty. The comment at that guard still describes it correctly.
+      Registration stays in `onCreate` (not `onStart`/`onStop` as in `AccountListActivity`) on
+      purpose: the list must also notice accounts added or removed while it is stopped behind the
+      editor, and `onResume` → `RefreshScopedList()` relies on the cache being current.
 
 ### 2.3 The only 3 real lint errors: `android:tint` → `app:tint`
 
-- [ ] `res/layout/account_element.xml:25`, `res/layout/account_element.xml:35`,
-      `res/layout/note_element.xml:30` (`UseAppTint` from androidx.appcompat).
+- [x] `account_element.xml` (both row buttons) and `note_element.xml` (the delete button) use
+      `app:tint`; both roots gained `xmlns:app`. **Zero real lint errors remain.**
 
-### 2.4 Back navigation: platform callback mixed with a deprecated override
+### 2.4 Back navigation: platform callback mixed with a deprecated override — ⚠️ not as planned
 
-- [ ] `AccountConfigurationActivity.java` registers a platform
-      `android.window.OnBackInvokedCallback` (`:568-571`, unregister `:578`, API 33 guarded, see the
-      explanation comment at `:135-136`) **and** still overrides the deprecated `onBackPressed()`
-      at `:604-610` (lint `GestureBackNavigation`). `NoteDetailActivity.java:147` already uses the
-      androidx `OnBackPressedDispatcher.addCallback`, which works on all API levels — switch to it
-      and drop both the platform dispatcher code and the override.
+- [x] `AccountConfigurationActivity.onBackPressed()` is kept and annotated
+      `@SuppressLint("GestureBackNavigation")`, with the reason in a comment. The androidx
+      `OnBackPressedDispatcher` is **not available here**: the activity extends
+      `AccountAuthenticatorActivity`, which must stay (its `finish()` returns the
+      `AccountAuthenticatorResponse` that `Authenticator.addAccount` passes in), and that framework
+      class is a plain `Activity` — which is also why the class carries all that manual
+      `getDelegate()` boilerplate.
+- [ ] Base-class migration → §4.
 
 ### 2.5 Menus: hardcoded titles and inconsistent search widget
 
-- [ ] `res/menu/detail.xml:9` `"Search"`, `:19` `"Next Item"`, `:27` `"Previous Item"`
-      (`HardcodedText`). `@string/search` exists (`res/values/strings.xml:10`); there are **no**
-      next/previous keys in any locale, so add two base-English keys (Weblate fills the rest) —
-      `detail.xml` also reuses `@string/save:34`, `@string/delete:40`, `@string/share:46`.
-- [ ] Search widget class differs between menus: `menu/list.xml:16` uses
-      `android.widget.SearchView`, `menu/detail.xml:10` uses
-      `androidx.appcompat.widget.SearchView`. Unify on appcompat (the class
-      `ListActivity.configureSearchView` imports).
-- [ ] `res/menu/detail.xml:11` — `app:showAsAction="always"` (`AlwaysShowAction`); three permanently
-      shown items overflow on narrow screens. Review whether prev/next belong in the overflow.
+- [x] `menu/detail.xml` — `@string/search` (it existed), plus two new base-English keys,
+      `next_item` and `previous_item` (no locale had anything similar). Weblate fills the
+      translations; those two keys are the +2 in _Baseline_.
+- [x] `menu/list.xml` now uses `androidx.appcompat.widget.SearchView` — the class
+      `ListActivity.onCreateOptionsMenu` imports, which was switched to appcompat accordingly.
+- [x] `showAsAction="always"` **kept** on the three editor search items, documented with
+      `tools:ignore="AlwaysShowAction"`: the editor shows at most four items at a time, and
+      `itemNext` / `itemPrevious` are invisible until a search is running
+      (`NoteDetailActivity`, in the query-text listener), which is exactly the case `always` is for.
 
-### 2.6 A bare `%` in two base strings produces 6 format warnings
+### 2.6 A bare `%` in two base strings — ⚠️ reverted, it made it worse
 
-- [ ] `res/values/strings.xml:125-126` — `link_image_width` / `link_image_height` are
-      `"Width (% or px)"` / `"Height (% or px)"`. Translations that escape the percent signs are
-      counted as format strings with a different argument count, producing `StringFormatCount`
-      warnings at `values-ru/strings.xml:105,106`, `values-cs/strings.xml:115,132`,
-      `values-zh-rCN/strings.xml:117,118`. Both are **only ever used as EditText hints**
-      (`NoteDetailActivity.java:511, 515, 1011, 1015`), never formatted — add `formatted="false"`
-      in base English and all 6 warnings disappear without touching any translation.
+- [x] `formatted="false"` on `link_image_width` / `link_image_height` turned the base string into a
+      zero-argument one, so every locale that keeps a bare `%` started to warn: 6 findings became 12.
+      Reverted; the base strings now only carry a comment naming the offending locales.
+- [ ] The real fix is on Weblate (§2.11): `values-ru:105,106`, `values-cs:115,132` and
+      `values-zh-rCN:117,118` escape the percent signs as `%%`, and lint compares against them.
 
 ### 2.7 Context leaks (`StaticFieldLeak` × 3)
 
-- [ ] `Miscs/LoginThread.java:46` — holds the `AccountConfigurationActivity` in a field, so a slow
-      IMAP connect leaks the activity. This is the only _real_ leak of the three: the class
-      **already** keeps a `FinishListener listener` (`:49`, assigned from the same activity at
-      `:55`), so the activity field is redundant — delete it and call back through the listener only
-      (`:84` is the one other use, `AccountManager.get(accountConfigurationActivity)`).
-- [ ] `ImapNotes3.java:46` `mContext` / `:47` `mContent` — statics, but `mContext` is
-      `getApplicationContext()` (`:74`), so it cannot leak an activity. Suppress with
-      `@SuppressLint("StaticFieldLeak")` + a one-line rationale. `mContent` does hold a view
-      (the Snackbar anchor, set at `:80`) — worth checking it is refreshed per screen before you
-      suppress that one.
+- [x] `ImapNotes3.mContext` — `@SuppressLint("StaticFieldLeak")` + rationale: it is
+      `getApplicationContext()` and cannot hold an activity.
+- [x] `ImapNotes3.mContent` — the real one. It was only ever set by `ListActivity.onCreate` and then
+      kept a destroyed activity's entire content view alive for the life of the process. Now a
+      `WeakReference<View>`; `ShowMessage` / `ShowAction` log and return when no anchor is alive
+      instead of throwing. Note for anyone chasing a missing Snackbar: **only `ListActivity` calls
+      `setContent`**, so a screen that passes `null` as the view (two calls in `NoteDetailActivity`)
+      borrows the list's view.
+- [ ] `Miscs/LoginThread.java` **not** fixed — the plan was wrong. The activity field is used **six**
+      times in `doInBackground` (`setResult`, `setAccountAuthenticatorResult`,
+      `SyncUtils.SetUIDValidity`, `AccountManager.get`, two `getString`), not once, and
+      `FinishListener` only declares `onFinishPerformed`, so it cannot carry those. Dropping the
+      field would not remove the leak either, because the listener _is_ the activity. → §4.
 
 ### 2.8 Accessibility
 
-- [ ] `Miscs/SwipeRevealListView.java:97` overrides `onTouchEvent` without ever calling
-      `performClick()` (`ClickableViewAccessibility`): TalkBack cannot activate a row. Call
-      `performClick()` on `ACTION_UP` when the gesture was not a horizontal drag.
+- [x] `Miscs/SwipeRevealListView.performClick()` activates the row that holds accessibility focus
+      through `AbsListView.performItemClick`, and `onTouchEvent` calls it for a tap that was not a
+      swipe (that is what the `ClickableViewAccessibility` check asks for). Touch behaviour is
+      unchanged: `isTap()` is pure and the list has no `OnClickListener`.
+- [ ] Needs a TalkBack pass on a device. If the screen reader sends `ACTION_CLICK` to the row rather
+      than the list, `SwipeRevealRow` needs the same routing plus an
+      `onInitializeAccessibilityNodeInfo` that advertises the click action — a row is deliberately
+      not clickable, because a clickable item view fires next to the list's own item click.
 
 ### 2.9 Manifest hygiene
 
-- [ ] No `android:supportsRtl` although the layouts use RTL attributes (`RtlEnabled`). Decide:
-      support RTL (`supportsRtl="true"`, and then the `start`/`end` attrs in
-      `account_setup.xml` / `note_detail.xml` etc. need to be finished properly), or set
-      `supportsRtl="false"` and drop the RTL attrs. Leaving it undecided is what lint is flagging.
-- [ ] `AndroidManifest.xml:8` `<dist:module dist:instant="true" />` — instant apps are gone and are
-      irrelevant for an F-Droid APK. Remove.
-- [ ] `res/mipmap-anydpi-v26/ic_launcher.xml:2` and `ic_launcher_round.xml:2` — adaptive icons need
-      a `<monochrome>` layer for themed icons on Android 13+ (`MonochromeLauncherIcon`).
-- [ ] `AndroidManifest.xml:20-21` `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="32` (`ScopedStorage`).
-      It is capped at 32 already, so this is mostly informational — but if `BackupRestore` works on
-      33+ without it, consider dropping the permission entirely.
+- [x] `<dist:module dist:instant="true" />` and the `xmlns:dist` declaration removed.
+- [x] `android:supportsRtl="false"` set explicitly. The layouts use `start`/`end` attributes, RTL was
+      never finished, and no translated locale is RTL, so this states the current state instead of
+      leaving lint to guess. Finishing RTL → §4.
+- [x] `WRITE_EXTERNAL_STORAGE` (already capped at `maxSdkVersion="32"`) **stays**:
+      `ImapNotes3.GetDocumentDir()` and `BackupRestore` write the backup zip into the public
+      `Documents` directory, which on API 25-32 still needs the permission. The manifest says so now.
+- [ ] `<monochrome>` layer for the adaptive icons needs artwork → §4. The shipped foregrounds are
+      PNGs and the sources in `art/icons/` are 0.9 MB Inkscape SVGs with filters and gradients; a
+      monochrome layer wants a flat silhouette.
 
 ### 2.10 Small things noticed while reading
 
-- [x] `res/values/colors.xml:25` — stray trailing `>`: `<color name="ShareActionBgColor">#F9FBE7</color>>`.
-      Done together with §1.3, which edited the same lines.
-- [ ] `AccountConfigurationActivity.java:115` — string literal in `setText(...)`
-      (`SetTextI18n`); move to a string resource.
-- [ ] `res/layout/note_detail.xml:13` — `InefficientWeight`: `layout_height="wrap_content"` with a
-      weight; use `0dp`.
-- [ ] `res/layout/editor_row.xml:5` — `Overdraw`: root paints a background while the theme paints
-      one too.
-- [ ] `res/layout/account_setup.xml:125` — `tooltipText` needs API 26 while `minSdk` is 25
-      (`UnusedAttribute`); harmless, suppress or accept.
+- [x] `AccountConfigurationActivity` — the `"Trash"` literal became `DEFAULT_COPY_IMAP_FOLDER` with a
+      comment (an IMAP folder name must not be translated) and `@SuppressLint("SetTextI18n")`.
+- [x] `note_detail.xml` — `RichEditor` height `wrap_content` → `0dp`; it is the only weighted child.
+- [x] `editor_row.xml` — background **kept**, `tools:ignore="Overdraw"` + comment: those rows are
+      Spinner dropdown rows and a popup window does not inherit the colour of the editor strip.
+- [x] `account_setup.xml` — `tools:ignore="UnusedAttribute"` on `tooltipText` (API 26 attribute in a
+      minSdk 25 app; it is simply ignored below 26).
 
 ### 2.11 Findings inside translations — fix via Weblate, never by hand
 
@@ -218,27 +229,32 @@ Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Webl
 - [ ] `Typos`: `values-nb/strings.xml:51` "Internet" → "Internett"; `values-es/strings.xml:55`
       "Ultimo" → "Último".
 - [ ] `TypographyEllipsis`: `values-fr/strings.xml:143` uses `...` instead of `…`.
+- [ ] Percent signs in `link_image_width` / `link_image_height`: `values-ru:105,106`,
+      `values-cs:115,132`, `values-zh-rCN:117,118` escape them as `%%` while other locales keep a
+      bare `%`. The strings are only ever used as EditText hints and are never formatted, so a single
+      `%` is right — see §2.6 for why the base-side `formatted="false"` is not the answer.
+- [ ] New keys to translate: `next_item`, `previous_item` (note-editor search navigation).
 - [ ] Unused string keys (zero references anywhere, with base line numbers):
-      `new_account:6`, `account_removed:11`, `remove:15`, `check_and_create_account:17`,
-      `syncing:49`, `refreshing_notes_list:50`, `Waiting_for_sync:53`, `txt_color:62`,
-      `AccountList:81`, `Last_sync:82`, `all_accounts:141`, `OAUTH2:196`.
+      `new_account:6`, `account_removed:13`, `remove:17`, `check_and_create_account:19`,
+      `syncing:51`, `refreshing_notes_list:52`, `Waiting_for_sync:55`, `txt_color:64`,
+      `AccountList:83`, `Last_sync:84`, `all_accounts:145`, `OAUTH2:200`.
       Of these, `all_accounts`, `AccountList`, `new_account`, `check_and_create_account`,
       `account_removed` are **intentionally kept** (see `AGENTS.md` — deleting keys forces
       re-translation work), and `refreshing_notes_list` only became unused when §1 removed the
       `SyncThread.resId` argument, so it joins that group rather than being a new problem.
       `remove`, `syncing`, `Waiting_for_sync`, `txt_color`, `Last_sync` and `OAUTH2` are genuine
       candidates for a Weblate-side cleanup.
-      Do **not** add `save` / `delete` to that list — `menu/detail.xml:34,40` use them.
+      Do **not** add `save` / `delete` to that list — `menu/detail.xml` uses them.
 
 ---
 
-## 3. Lint configuration — do this early; it makes §1 and §2 measurable
+## 3. Lint configuration — do this next; it makes everything after it measurable
 
 - [ ] 3.1 Uncomment the lint block in `build.gradle:83-85`
       (`lint { baseline = file("lint-baseline.xml") }`) and run `lintDebug` once to create the
       baseline (no `lint-baseline.xml` exists yet). After committing it, a _rising_ finding count
-      means a real regression instead of 331 lines of known noise.
-- [ ] 3.2 `NonConstantResourceId` is **84 of the 138 warnings** and is a false positive here:
+      means a real regression instead of 313 findings of known noise.
+- [ ] 3.2 `NonConstantResourceId` is **84 of the 121 warnings** and is a false positive here:
       `gradle.properties` sets `android.nonFinalResIds=false`, so the IDs _are_ final. Disable the
       check (`lintOptions`/`lint { disable 'NonConstantResourceId' }`) rather than rewriting every
       `switch` in `NoteDetailActivity` / `EditorMenuAdapter` / `ListActivity`.
@@ -280,18 +296,61 @@ Per `AGENTS.md`, do not edit `values-*/strings.xml` directly. Hand these to Webl
       for content — may need IMAP pipelining, `mail.imap.pipelining`); the per-step duration logs
       (`onPerformSync …: … ms`) already give you the measurements.
 - [ ] **OAuth2 decision**: `Data/Security.java:60` has the enum entry commented out and
-      `res/values/strings.xml:196` `OAUTH2` is unreferenced, while `build.gradle:89` keeps
+      `res/values/strings.xml:200` `OAUTH2` is unreferenced, while `build.gradle:89` keeps
       `play-services-auth` commented out. Either delete all three remnants (Google-dependent, and
       F-Droid does not want non-free SDKs) or implement it. Leaving the trio half-alive is the
       worst option.
 - [ ] **`AsyncTask` migration**: `UpdateThread`, `SyncThread`, `LoginThread` — deprecated since
       Android 11 but pervasive. Only worth touching when one of them changes anyway.
-- [ ] `AndroidManifest.xml:126` `TODO: What is StubProvider for?` — answer: the sync adapter needs a
+- [ ] `AndroidManifest.xml:122` `TODO: What is StubProvider for?` — answer: the sync adapter needs a
       content authority (`de.niendo.ImapNotes3.provider`), so `Sync/StubProvider` is required.
       Replace the TODO with that sentence rather than deleting the provider.
+- [ ] **`AccountConfigurationActivity` base class.** It extends `AccountAuthenticatorActivity` and
+      re-implements what `AppCompatActivity` does by hand (about 15 `getDelegate()` calls:
+      `installViewFactory`, `setContentView` ×3, `onPostResume`, `onStop`, `onTitleChanged`, …).
+      Moving to `AppCompatActivity` would give it the androidx `OnBackPressedDispatcher` (closing
+      §2.4) and drop the boilerplate, but the authenticator response that
+      `ImapNotesAuthenticatorService.Authenticator.addAccount` puts into the intent has to be
+      forwarded by hand — needs the "add account from the system's account settings" flow retested on
+      a device.
+- [ ] **`Miscs/LoginThread.java` holds the activity** (`:46`) across a slow IMAP connect, so a
+      rotation or a left screen leaks it. It genuinely needs a context plus
+      `setResult` / `setAccountAuthenticatorResult`, which `FinishListener` does not carry (see §2.7)
+      — fix it together with the `AsyncTask` migration below, not by deleting the field.
+- [ ] **RTL support.** The layouts use `start`/`end` attributes, the manifest now says
+      `supportsRtl="false"`. Finishing it means auditing every layout for leftover
+      `left`/`right`, then flipping it to `true` and looking at the mirrored screens.
+- [ ] **Monochrome launcher icon** (`MonochromeLauncherIcon` ×2): needs a flat silhouette layer, i.e.
+      real artwork (`art/icons/ic_launcher_foreground*.svg` are filter-heavy Inkscape files, the
+      shipped foregrounds are PNGs).
 - [ ] `Miscs/SmtpServerNameFinder.java` is wired to the account form only:
-      `AccountConfigurationActivity.java:256` fills the server field from the e-mail domain.
+      `AccountConfigurationActivity.java:261` fills the server field from the e-mail domain.
       Confirm that is the intended UX, or the class is doing less than it looks like.
+
+## 5. Noticed while working §1 and §2
+
+Small, verified, and not worth a separate scan — pick these up while you are in the file.
+
+- [ ] `ListActivity.java:747` — `ImapNotes3.ShowMessage("Please install a file manager.", listview,
+      3000)`: a user-facing string that never went through `res/values/strings.xml`, and a duration of
+      3000 _seconds_ (fifty minutes) where every other call passes single digits. Needs a base-English
+      key and something like `5`.
+- [ ] `ImapNotes3.java:178` `public static String AvoidLargeBundle` — the note body is passed between
+      `NoteDetailActivity:919` and `ListActivity:827,837` through a static field to dodge a
+      `TransactionTooLargeException`. It is never cleared, so the last note's text stays in memory,
+      and it silently breaks if two editors are ever on the back stack. A local file or a `Bundle`
+      with a proper size check would be the honest version.
+- [ ] `ImapNotes3.intent` — a `public static Intent` that `SyncAdapter:225-230` fills and
+      `ListActivity:334-339` reads: the sync-to-UI channel is process-global mutable state, which is
+      also why the `ContentObserver` has the `selfChange` guard. Worth knowing before touching either
+      side; the `SYNCED` / `SYNCINTERVAL` extras are already written but never read.
+- [ ] `Data/ImapNotesAccount.ClearHomeDir()` catches `IOException | Error` "for anbox" and only logs.
+      Called once, from `SyncAdapter:131`, right after `ClearDb` — swallowing the failure there leaves
+      note files of a deleted account on disk.
+- [ ] Deprecated `fill_parent` / `FILL_PARENT` still in `editor_row.xml`, `account_setup.xml`
+      (`layout_width="fill_parent"`, `android:layout_height="0px"`) and
+      `AccountConfigurationActivity:107` (`LinearLayout.LayoutParams.FILL_PARENT`); `match_parent` /
+      `MATCH_PARENT` are the same value with the modern name.
 
 ## Traps — do not "clean" these
 

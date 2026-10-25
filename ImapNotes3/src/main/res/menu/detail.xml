@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!--Search menu item-->
+    <!--Search menu item. The editor shows at most four of its items at a time, and the two
+        search-navigation items below are invisible until a search is running, so these three stay
+        out of the overflow on purpose (tools:ignore for the AlwaysShowAction lint check).-->
     <item
         android:id="@+id/itemSearch"
         android:icon="@drawable/ic_action_search"
-        android:title="Search"
+        android:title="@string/search"
         app:actionViewClass="androidx.appcompat.widget.SearchView"
-        app:showAsAction="always|collapseActionView" />
+        app:showAsAction="always|collapseActionView"
+        tools:ignore="AlwaysShowAction" />
 
     <!--make sure you add the collapseActionView in showsAsAction-->
 
@@ -16,7 +20,7 @@
     <item
         android:id="@+id/itemNext"
         android:icon="@drawable/arrow_drop_down"
-        android:title="Next Item"
+        android:title="@string/next_item"
         android:visible="false"
         app:showAsAction="always" />
 
@@ -24,7 +28,7 @@
     <item
         android:id="@+id/itemPrevious"
         android:icon="@drawable/arrow_drop_up"
-        android:title="Previous Item"
+        android:title="@string/previous_item"
         android:visible="false"
         app:showAsAction="always" />
 

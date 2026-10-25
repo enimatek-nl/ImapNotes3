@@ -13,7 +13,7 @@
         android:id="@+id/search"
         android:icon="@drawable/ic_action_search"
         android:title="@string/search"
-        app:actionViewClass="android.widget.SearchView"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
         app:showAsAction="collapseActionView|ifRoom" />
 
     <item

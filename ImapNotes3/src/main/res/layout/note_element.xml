@@ -6,6 +6,7 @@
     The two ids rowActions / rowContent are required by SwipeRevealRow. -->
 <de.niendo.ImapNotes3.Miscs.SwipeRevealRow
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
 >
@@ -27,7 +28,7 @@
             android:contentDescription="@string/delete"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_delete"
-            android:tint="@android:color/white"
+            app:tint="@android:color/white"
         />
     </LinearLayout>
 

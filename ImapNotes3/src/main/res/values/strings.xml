@@ -8,6 +8,8 @@
     <string name="refresh">Refresh</string>
     <string name="about">About</string>
     <string name="search">Search</string>
+    <string name="next_item">Next Item</string>
+    <string name="previous_item">Previous Item</string>
     <string name="account_removed">Account has been removed</string>
     <string name="delete_account">Delete account</string>
     <string name="are_you_sure_you_wish_to_delete_the_account">Are you sure you wish to delete the account? Its notes stay in the mailbox on the server, only the copy stored on this device is removed.</string>
@@ -122,6 +124,8 @@
     <string name="insert_link_image">Insert linked image</string>
     <string name="link_image_url">Image URL</string>
     <string name="link_alt_text">Alternative text</string>
+    <!--Never formatted, only used as EditText hints. ru, cs and zh-rCN escape the percent signs
+        as %%, which lint counts as a different argument count: that belongs to Weblate, not here.-->
     <string name="link_image_width">Width (% or px)</string>
     <string name="link_image_height">Height (% or px)</string>
     <string name="image_size_relative">Image size is relative to page width</string>

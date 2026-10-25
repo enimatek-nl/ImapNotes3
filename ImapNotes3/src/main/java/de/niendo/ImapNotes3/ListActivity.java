@@ -47,6 +47,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.widget.SearchView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.os.Handler;
@@ -58,7 +59,6 @@ import android.view.View;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ListView;
-import android.widget.SearchView;
 
 import de.niendo.ImapNotes3.Data.NotesDb;
 import de.niendo.ImapNotes3.Data.OneNote;
@@ -74,11 +74,9 @@ import eltos.simpledialogfragment.SimpleDialog;
 import eltos.simpledialogfragment.list.SimpleListDialog;
 import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
-import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
@@ -134,6 +132,7 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
     static String[] hashFilter;
     private static ArrayList<String> hashFilterSelected = new ArrayList<>();
     private ContentObserver mObserver;
+    private OnAccountsUpdateListener accountsUpdateListener;
     private SwipeRefreshLayout swipeLayout;
     // Ensure that we never have to check for null by initializing reference.
     @NonNull
@@ -147,6 +146,7 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
     public void onDestroy() {
         super.onDestroy();
         getContentResolver().unregisterContentObserver(mObserver);
+        ListActivity.accountManager.removeOnAccountsUpdatedListener(accountsUpdateListener);
     }
 
     public static ArrayList<String> getAccountList() {
@@ -259,8 +259,9 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
 
         ListActivity.accountList = new ArrayList<>();
         ListActivity.accountManager = AccountManager.get(getApplicationContext());
+        accountsUpdateListener = new AccountsUpdateListener();
         ListActivity.accountManager.addOnAccountsUpdatedListener(
-                new AccountsUpdateListener(), null, true);
+                accountsUpdateListener, null, true);
 
         this.noteList = new ArrayList<>();
 
@@ -934,12 +935,9 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
                 String s = iter.next();
                 if (!(newList.contains(s))) {
                     iter.remove();
-                    // Why try here?
-                    try {
-                        FileUtils.deleteDirectory(ImapNotes3.GetAccountDir(s));
-                    } catch (IOException e) {
-                        Log.e(TAG, "deleteDirectory failed:", e);
-                    }
+                    // The account is gone: only drop it from the cached list here.  Deleting the
+                    // local directory is SyncUtils.RemoveAccount's job, which runs when
+                    // AccountManager confirms the removal.
                     equalLists = false;
                 }
             }

@@ -23,6 +23,7 @@ package de.niendo.ImapNotes3;
 
 import static android.os.Environment.DIRECTORY_DOCUMENTS;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
@@ -33,6 +34,7 @@ import android.os.StrictMode;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import com.google.android.material.snackbar.BaseTransientBottomBar;
@@ -40,11 +42,19 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.lang.ref.WeakReference;
 
 public class ImapNotes3 extends Application {
     private static final String TAG = "IN_ImapNotes3";
+    // Set once in onCreate() to the application context, so it can never hold on to an activity -
+    // which is what this lint check is normally about.
+    @SuppressLint("StaticFieldLeak")
     private static Context mContext;
-    private static View mContent;
+    // The content view of the screen that most recently offered itself as the Snackbar anchor, used
+    // when a caller has no view of its own.  Held weakly on purpose: a strong reference would keep
+    // the whole view tree of a destroyed activity alive for the lifetime of the process.
+    @Nullable
+    private static WeakReference<View> mContent;
     public static Intent intent; // For Data-Exchange SyncAdapater
     private static final String ReservedChars = "[\\\\/:*?\"<>|'!]";
     public static final Integer MainLock = 0;
@@ -77,7 +87,12 @@ public class ImapNotes3 extends Application {
     private final Thread.UncaughtExceptionHandler defaultUEH;
 
     public static void setContent(View content) {
-        mContent = content;
+        mContent = new WeakReference<>(content);
+    }
+
+    @Nullable
+    private static View getContent() {
+        return mContent == null ? null : mContent.get();
     }
     // handler listener
     // from https://stackoverflow.com/questions/12077318/how-to-catch-the-unknown-exception-in-run-time-android
@@ -85,14 +100,14 @@ public class ImapNotes3 extends Application {
             new Thread.UncaughtExceptionHandler() {
                 @Override
                 public void uncaughtException(Thread thread, Throwable e) {
-                    //FIXME - do something usefull
+                    // Keep the stacktrace in the preferences, the debug report exports it.
                     SharedPreferences.Editor preferences = mContext.getSharedPreferences(SettingsActivity.MAIN_PREFERENCE_NAME, MODE_PRIVATE).edit();
                     preferences.putString("uncaughtException", Log.getStackTraceString(e));
                     preferences.apply();
 
-                    System.exit(2);
-
-                    // re-throw critical exception further to the os (important)
+                    // Hand the exception on to the handler that was installed before ours, so the
+                    // system still gets its logcat stacktrace, DropBox entry and crash dialog.  A
+                    // System.exit() here used to run first and swallow all of that.
                     defaultUEH.uncaughtException(thread, e);
                 }
             };
@@ -136,7 +151,12 @@ public class ImapNotes3 extends Application {
             Runnable actionCallback) {
 
         if (view == null)
-            view = mContent;
+            view = getContent();
+        if (view == null) {
+            // Neither the caller nor the fallback anchor has a live view to attach to.
+            Log.w(TAG, "ShowAction: no view to attach the action to");
+            return null;
+        }
 
         if (durationSeconds == 0)
             durationSeconds = BaseTransientBottomBar.LENGTH_INDEFINITE;
@@ -163,7 +183,12 @@ public class ImapNotes3 extends Application {
     public static void ShowMessage(String message, View view, int durationSeconds) {
 
         if (view == null)
-            view = mContent;
+            view = getContent();
+        if (view == null) {
+            // Neither the caller nor the fallback anchor has a live view to attach to.
+            Log.w(TAG, "ShowMessage: no view to attach the message to: " + message);
+            return;
+        }
 
         Snackbar snackbar =
                 Snackbar.make(view, message, durationSeconds * 1000);

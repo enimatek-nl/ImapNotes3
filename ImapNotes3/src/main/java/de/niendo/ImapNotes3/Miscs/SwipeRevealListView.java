@@ -25,6 +25,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 
 import androidx.annotation.NonNull;
@@ -131,6 +132,11 @@ public class SwipeRevealListView extends ListView {
                     state = STATE_REST;
                     return true;
                 }
+                if (isTap(ev)) {
+                    // AbsListView turns this touch into the item click itself; the call here only
+                    // serves the accessibility services that act on performClick().
+                    performClick();
+                }
                 state = STATE_REST;
                 return super.onTouchEvent(ev);
             case MotionEvent.ACTION_CANCEL:
@@ -143,6 +149,28 @@ public class SwipeRevealListView extends ListView {
             default:
                 return super.onTouchEvent(ev);
         }
+    }
+
+    /**
+     * A touch gesture is turned into an item click by {@link ListView} itself, so {@code
+     * performClick()} is the entry point for the other ways of activating a row - an accessibility
+     * service or an external keyboard.  Without this they would do nothing, because a row is not
+     * clickable and its action buttons stay hidden until the row is swiped open.
+     */
+    @Override
+    public boolean performClick() {
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child.isAccessibilityFocused()) {
+                int position = getPositionForView(child);
+                ListAdapter adapter = getAdapter();
+                if (position != INVALID_POSITION && adapter != null) {
+                    Log.v(TAG, "performClick: activating the row at position " + position);
+                    return performItemClick(child, position, adapter.getItemId(position));
+                }
+            }
+        }
+        return super.performClick();
     }
 
     private void startTouch(@NonNull MotionEvent ev) {

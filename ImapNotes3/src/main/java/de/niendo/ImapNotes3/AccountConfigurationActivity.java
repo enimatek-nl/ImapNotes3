@@ -109,10 +109,15 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         lLayout.setVisibility(View.VISIBLE);
     };
 
+    // Default name of the mailbox that receives deleted notes.  This is an IMAP folder name and must
+    // stay English: the folder on the server has to match what is written here.
+    private static final String DEFAULT_COPY_IMAP_FOLDER = "Trash";
+
+    @SuppressLint("SetTextI18n") // the constant is an IMAP folder name, not text shown to the user
     private final CheckBox.OnCheckedChangeListener FinishCopyFolderCheckBox = (v, r) -> {
         copyImapFolderNameTextView.setEnabled(v.isChecked());
         if (GetTextViewText(copyImapFolderNameTextView).isEmpty())
-            copyImapFolderNameTextView.setText("Trash");
+            copyImapFolderNameTextView.setText(DEFAULT_COPY_IMAP_FOLDER);
     };
     private Spinner securitySpinner;
     @NonNull
@@ -600,8 +605,13 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
     }
 
     @SuppressWarnings("deprecation")
+    @SuppressLint("GestureBackNavigation")
     @Override
     public void onBackPressed() {
+        // This activity has to extend AccountAuthenticatorActivity (the authenticator hands it an
+        // AccountAuthenticatorResponse), and that framework class has no androidx
+        // OnBackPressedDispatcher, so the older APIs are still served through this override while
+        // API 33+ uses EnableBackToForm().  Migrating the base class is tracked in the backlog.
         if (resultLayout.getVisibility() == View.VISIBLE && !resultIsSuccess) {
             // After a failed check, Back returns to the form so the entries can be corrected.
             ShowFormPage();
