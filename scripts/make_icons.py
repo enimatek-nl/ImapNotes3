@@ -117,7 +117,7 @@ def path_subpaths(d):
     x = y = 0.0
     sx = sy = 0.0
     px = py = 0.0  # last control point for smooth curves (unused: S/T not used)
-    tokens = re.findall(r"[MmLlHhVvQqAaZz]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?", d)
+    tokens = re.findall(r"[MmLlHhVvCcQqAaZz]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?", d)
     i = 0
     cmd = None
     while i < len(tokens):
@@ -165,6 +165,17 @@ def path_subpaths(d):
             if cmd == "V":
                 y = n
             cur.append((x, y))
+        elif cmd in "Cc":
+            x1, y1, x2, y2, nx, ny = num(), num(), num(), num(), num(), num()
+            if cmd == "c":
+                x1, y1, x2, y2, nx, ny = (x + x1, y + y1, x + x2, y + y2, x + nx, y + ny)
+            steps = 24
+            for st in range(1, steps + 1):
+                u = st / steps
+                a, b = 1 - u, u
+                cur.append((a ** 3 * x + 3 * a * a * b * x1 + 3 * a * b * b * x2 + b ** 3 * nx,
+                            a ** 3 * y + 3 * a * a * b * y1 + 3 * a * b * b * y2 + b ** 3 * ny))
+            x, y = nx, ny
         elif cmd in "Qq":
             cx1, cy1, nx, ny = num(), num(), num(), num()
             if cmd == "q":
@@ -292,6 +303,116 @@ def find_font(size):
     return ImageFont.load_default()
 
 
+def d_to_cubic(d):
+    """Rewrite a path as absolute M/L/C/Z.
+
+    AAPT2 compiles VectorDrawable arcs itself and that step is fragile (an elliptical
+    or exactly-semicircular arc can come out as pathData="NaN" and the resource fails
+    to compile), so the generated drawables only ever contain lines and cubics.
+    """
+    def fmt(v):
+        s = "%.3f" % v
+        return s.rstrip("0").rstrip(".") or "0"
+
+    tokens = re.findall(r"[MmLlHhVvQqAaZz]|[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?", d)
+    out = []
+    x = y = sx = sy = 0.0
+    i, cmd = 0, None
+
+    def num():
+        nonlocal i
+        v = float(tokens[i])
+        i += 1
+        return v
+
+    def arc_cubics(x1, y1, x2, y2, rx, ry, rot, large, sweep):
+        if rx == 0 or ry == 0:
+            return [(None, None, x2, y2)]
+        cx, cy, rx, ry, phi, th1, dth = arc_to_center(x1, y1, x2, y2, rx, ry,
+                                                      rot, large, sweep)
+        segs = max(1, int(math.ceil(abs(dth) / (math.pi / 2))))
+        res = []
+        for s in range(segs):
+            a1 = th1 + dth * s / segs
+            a2 = th1 + dth * (s + 1) / segs
+            delta = a2 - a1
+            k = 4.0 / 3.0 * math.tan(delta / 4.0)
+            cp, sp2 = math.cos(phi), math.sin(phi)
+
+            def point(th, deriv=False):
+                ux, uy = rx * math.cos(th), ry * math.sin(th)
+                if deriv:
+                    ux, uy = -rx * math.sin(th), ry * math.cos(th)
+                rxv, ryv = ux * cp - uy * sp2, ux * sp2 + uy * cp
+                return (rxv, ryv) if deriv else (rxv + cx, ryv + cy)
+
+            p1x, p1y = point(a1)
+            p2x, p2y = point(a2)
+            t1x, t1y = point(a1, True)
+            t2x, t2y = point(a2, True)
+            res.append((p1x + k * t1x, p1y + k * t1y, p2x - k * t2x, p2y - k * t2y,
+                        p2x, p2y))
+        res[-1] = res[-1][:4] + (x2, y2)
+        return res
+
+    while i < len(tokens):
+        t = tokens[i]
+        if not re.match(r"[-+0-9.]", t):
+            cmd, i = t, i + 1
+            if cmd in "Zz":
+                out.append("Z")
+                x, y = sx, sy
+            continue
+        if cmd in "Mm":
+            nx, ny = num(), num()
+            if cmd == "m":
+                nx, ny = x + nx, y + ny
+            out.append("M%s,%s" % (fmt(nx), fmt(ny)))
+            x, y = sx, sy = nx, ny
+            cmd = "l" if cmd == "m" else "L"
+        elif cmd in "Ll":
+            nx, ny = num(), num()
+            if cmd == "l":
+                nx, ny = x + nx, y + ny
+            out.append("L%s,%s" % (fmt(nx), fmt(ny)))
+            x, y = nx, ny
+        elif cmd in "Hh":
+            n = num()
+            n = x + n if cmd == "h" else n
+            out.append("L%s,%s" % (fmt(n), fmt(y)))
+            x = n
+        elif cmd in "Vv":
+            n = num()
+            n = y + n if cmd == "v" else n
+            out.append("L%s,%s" % (fmt(x), fmt(n)))
+            y = n
+        elif cmd in "Qq":
+            cx1, cy1, nx, ny = num(), num(), num(), num()
+            if cmd == "q":
+                cx1, cy1, nx, ny = x + cx1, y + cy1, x + nx, y + ny
+            # quadratic -> cubic (exact)
+            c1x, c1y = x + 2.0 / 3.0 * (cx1 - x), y + 2.0 / 3.0 * (cy1 - y)
+            c2x, c2y = nx + 2.0 / 3.0 * (cx1 - nx), ny + 2.0 / 3.0 * (cy1 - ny)
+            out.append("C%s,%s %s,%s %s,%s" % (fmt(c1x), fmt(c1y), fmt(c2x), fmt(c2y),
+                                               fmt(nx), fmt(ny)))
+            x, y = nx, ny
+        elif cmd in "Aa":
+            rx, ry, rot, large, sweep = num(), num(), num(), int(num()), int(num())
+            nx, ny = num(), num()
+            if cmd == "a":
+                nx, ny = x + nx, y + ny
+            for c in arc_cubics(x, y, nx, ny, rx, ry, rot, large, sweep):
+                if c[0] is None:
+                    out.append("L%s,%s" % (fmt(c[2]), fmt(c[3])))
+                else:
+                    out.append("C%s,%s %s,%s %s,%s" % (fmt(c[0]), fmt(c[1]), fmt(c[2]),
+                                                       fmt(c[3]), fmt(c[4]), fmt(c[5])))
+            x, y = nx, ny
+        else:
+            raise ValueError("path command %r is not supported" % cmd)
+    return " ".join(out)
+
+
 # ------------------------------------------------ SVG -> VectorDrawable conversion
 #
 # The adaptive-icon layers (API 26+) are vector drawables. They are generated from
@@ -356,7 +477,7 @@ def emit_vd_nodes(nodes, style, depth, lines):
             emit_nested(node, cur, depth, lines)
         elif tag in ("path", "rect", "circle"):
             d = node.get("d") if tag == "path" else (_rect_d(node) if tag == "rect" else _circle_d(node))
-            attrs = ['android:pathData="%s"' % " ".join(d.split())]
+            attrs = ['android:pathData="%s"' % d_to_cubic(d)]
             for key, attr in VD_ATTR.items():
                 value = cur.get(key)
                 if value is None or value == "none":
