@@ -50,5 +50,13 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[\d.-]+$
+
+MaintainerNotes: >
+  The git history carries upstream's tags plus a few v5.x-beta-* ones. The beta/pre
+  tags contain letters, so the UpdateCheckMode regex above does not match them, and the
+  v1.0-08..v1.4-07 tags are all below CurrentVersionCode, so nothing stale is built.
+  Release tags are made on the "main" branch by scripts/release.sh. The fastlane/
+  metadata in the repo provides title, descriptions, changelogs and screenshots, so
+  this recipe deliberately has no Summary/Description.
 CurrentVersion: v1.5-01
 CurrentVersionCode: 10500
