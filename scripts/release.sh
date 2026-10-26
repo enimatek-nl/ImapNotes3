@@ -19,6 +19,11 @@ if [ -z "$NAME" ] || [ -z "$CODE" ]; then
     echo "usage: $0 <versionName> <versionCode>   e.g. $0 v1.5-02 10501" >&2
     exit 1
 fi
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$BRANCH" != main ]; then
+    echo "releases are tagged on 'main' (you are on '$BRANCH')" >&2
+    exit 1
+fi
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "working tree is not clean - commit or stash first" >&2
     exit 1
@@ -38,7 +43,7 @@ sed -e "s/android:versionCode=\"[0-9]*\"/android:versionCode=\"$CODE\"/" \
 git add "$MANIFEST"
 git commit -m "release $NAME ($CODE)"
 git tag "$NAME"
-git push
+git push origin main
 git push origin "$NAME"
 
 echo

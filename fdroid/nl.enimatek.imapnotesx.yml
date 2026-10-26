@@ -8,9 +8,8 @@
 #   3. open the merge request; every later release only needs the two
 #      CurrentVersion lines bumped (the buildbot builds any new tag itself)
 #
-# The URLs below assume the GitHub fork is renamed to "ImapNotesX". Until it is,
-# use the current name (https://github.com/enimatek-nl/ImapNotes3.git) - GitHub
-# redirects renamed repositories, but a renamed repo does not keep open issues.
+# The GitHub fork was renamed to "ImapNotesX", so the URLs below are final.
+# Releases are tagged on the "main" branch (see AGENTS.md: "Branch layout").
 
 # Modelled on upstream's metadata/de.niendo.ImapNotes3.yml, with the pieces that
 # do not apply to this fork removed: the author's Binaries (F-Droid signs our

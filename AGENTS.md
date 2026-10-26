@@ -236,9 +236,20 @@ JDK 17+ (toolchain auto-provisioned via foojay; a system JDK 21 works fine).
 
 ## Git / release practices
 
-- Main branch `master`; the fork identity lives on `ImapNotesX` (branched from upstream `master`).
-  Remote `origin` = github.com/enimatek-nl/ImapNotesX; keep an `upstream` remote pointing at
-  github.com/niendo1/ImapNotes3 and rebase/cherry-pick from it rather than merging back.
+- **Branch layout** (remote `origin` = github.com/enimatek-nl/ImapNotesX, renamed from the fork
+  of niendo1/ImapNotes3 — the "forked from" relationship and the fork network survive a rename):
+    - `main` — **the published fork**: upstream code + our own improvements + the ImapNotesX
+      identity (applicationId, name, logo, F-Droid pipeline). Tags/releases and the F-Droid buildbot
+      build come from here. This is the default branch.
+    - `upstream-pr` — only the changes meant for upstream (account-first navigation, swipe
+      actions, snippets, cleanups). Head of the "(final) pull request"
+      `enimatek-nl/ImapNotesX:upstream-pr` → `niendo1/ImapNotes3:master`. Nothing ImapNotesX-specific
+      may ever be committed here.
+    - `upstream` remote = https://github.com/niendo1/ImapNotes3.git — `git fetch upstream` then
+      rebase `main` onto `upstream/master` to catch up (never merge upstream into the PR branch).
+      Once upstream merges `upstream-pr`, `git rebase upstream/master` on `main` drops those
+      commits as duplicates. Old upstream feature branches (`hashtag`, `Attachment`, …) are kept
+      as-is; don't build on them.
 - Release flow: write `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, then
   `scripts/release.sh <versionName> <versionCode>` (bumps the manifest, builds, commits, tags,
   pushes). GitHub Actions then attaches the release APK to the tag; F-Droid's buildbot builds the
