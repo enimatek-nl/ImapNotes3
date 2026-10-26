@@ -1,0 +1,117 @@
+apply plugin: 'com.android.application'
+
+// The release keystore is deliberately not in the repo, and F-Droid re-signs with
+// its own key anyway. Wire it up only when the file is present, so a fresh clone
+// (and the F-Droid buildbot) can build both variants with the debug key.
+def releaseKeystore = rootProject.file('keystore.jks')
+
+android {
+    signingConfigs {
+        release {
+            if (releaseKeystore.exists()) {
+                storeFile releaseKeystore
+                storePassword System.getenv('IMAPNOTES_KEYSTORE_PASSWORD') ?: 'ImapNotes2'
+                keyAlias 'ImapNotes'
+                keyPassword System.getenv('IMAPNOTES_KEY_PASSWORD') ?: 'ImapNotes'
+            }
+        }
+    }
+
+    compileSdk 37
+    // buildToolsVersion "34.0.0"
+
+    //noinspection GroovyMissingReturnStatement
+    defaultConfig {
+        applicationId "nl.enimatek.imapnotesx"
+        targetSdkVersion 35
+        minSdkVersion 25
+        buildConfigField 'String', 'APPLICATION_NAME', '"ImapNotesX"'
+    }
+    buildTypes {
+        release {
+            signingConfig releaseKeystore.exists() ? signingConfigs.release : signingConfigs.debug
+
+            // Enables code shrinking, obfuscation, and optimization for only
+            // your project's release build type.
+            minifyEnabled false
+
+            // Enables resource shrinking, which is performed by the
+            // Android Gradle plugin.
+            shrinkResources false
+
+            // Includes the default ProGuard rules fil es that are packaged with
+            // the Android Gradle plugin. To learn more, go to the section about
+            // R8 configuration files.
+            proguardFiles getDefaultProguardFile(
+                    'proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+
+        }
+        debug {
+            signingConfig releaseKeystore.exists() ? signingConfigs.release : signingConfigs.debug
+            debuggable true
+        }
+    }
+
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach {
+            outputFileName = "${project.name}-${variant.versionName}-${variant.buildType.name}.apk"
+        }
+    }
+
+    //noinspection GroovyMissingReturnStatement
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/LICENSE.txt']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    namespace 'de.niendo.ImapNotes3'
+    buildFeatures {
+        buildConfig true
+    }
+
+    packagingOptions {
+        resources.excludes.add("META-INF/*")
+    }
+
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+
+    //lint {
+    //    baseline = file("lint-baseline.xml")
+    //}
+}
+
+dependencies {
+    //implementation 'com.google.android.gms:play-services-auth:21.5.0'
+    implementation 'com.google.android.material:material:1.14.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0'
+    implementation 'androidx.appcompat:appcompat:1.8.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.sun.mail:android-mail:1.6.8'
+    implementation 'com.sun.mail:android-activation:1.6.8'
+    implementation 'commons-io:commons-io:2.22.0'
+    implementation 'com.github.niendo1:richeditor-android:3.0.4'
+    implementation 'org.jetbrains:annotations:26.1.0'
+    implementation 'org.jsoup:jsoup:1.23.1'
+    implementation 'io.github.eltos:simpledialogfragments:3.10'
+    implementation 'com.github.woheller69:FreeDroidWarn:V1.14'
+}
+
+// ToDo
+//allprojects {
+//    tasks.withType(JavaCompile) {
+//        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+//    }
+//}
+
+

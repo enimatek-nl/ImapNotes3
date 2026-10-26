@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:versionCode="10500"
+    android:versionName="v1.5-01">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.READ_SYNC_STATS" />
+
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!--BackupRestore writes its zip into the public Documents directory, which on API 25 to 32
+        still needs this permission; on 33+ it is capped away and the app does not write there.-->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <application
+        android:name=".ImapNotes3"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/backup_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:supportsRtl="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/ImapNotesTheme"
+        android:requestLegacyExternalStorage="true"
+        tools:targetApi="tiramisu">
+
+        <activity
+            android:name=".AccountListActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!--
+ A share is received here, because this screen owns the accounts.  It names the account the note
+ should go to (asking when there is more than one) and forwards the payload to that account's notes
+ list.  See AccountListActivity.routeShareIntent().
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter android:label="@string/intent_save_as_note">
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <intent-filter android:label="@string/intent_import_note">
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="message/rfc822" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            android:label="@string/settings"
+            android:parentActivityName=".AccountListActivity" />
+        <!--
+ The notes list always belongs to one account and is only reachable from the account overview, so it
+ does not need to be exported.  The ACTION_SEARCH filter that used to be here is gone: no code ever
+ handled that action, and the search of the notes list is a menu SearchView (see res/menu/list.xml).
+        -->
+        <activity
+            android:name=".ListActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:parentActivityName=".AccountListActivity">
+        </activity>
+        <activity
+            android:name=".AccountConfigurationActivity"
+            android:exported="true"
+            android:parentActivityName=".AccountListActivity">
+
+            <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="de.niendo.ImapNotes3.AccountListActivity" />
+        </activity>
+        <activity
+            android:name=".NoteDetailActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:parentActivityName=".ListActivity">
+
+            <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="de.niendo.ImapNotes3.ListActivity" />
+        </activity>
+
+        <service
+            android:name=".Sync.ImapNotesAuthenticatorService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/authenticator" />
+        </service>
+        <!--
+ TODO: What is StubProvider for?  This is the only reference to it.
+         Also AndroidDom Inspection complains about it not being public, yet the application still
+         works.
+        -->
+        <!-- suppress AndroidDomInspection -->
+        <provider
+            android:name=".Sync.StubProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false" />
+
+        <service
+            android:name=".Sync.SyncService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter" />
+            </intent-filter>
+            <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
+            <meta-data
+                android:name="android.content.SyncAdapter"
+                android:resource="@xml/syncadapter" />
+        </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+    </application>
+
+</manifest>
