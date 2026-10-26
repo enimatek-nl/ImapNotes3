@@ -1,0 +1,51 @@
+# Draft for fdroid/fdroiddata: metadata/nl.enimatek.imapnotesx.yml
+#
+# How to use:
+#   1. fork gitlab.com/fdroid/fdroiddata, copy this file to
+#      metadata/nl.enimatek.imapnotesx.yml
+#   2. add the *first* Build entry with the commit that carries the tag, then
+#      set CurrentVersion/CurrentVersionCode to that release (see docs/FDROID.md)
+#   3. open the merge request; every later release only needs the two
+#      CurrentVersion lines bumped (the buildbot builds any new tag itself)
+#
+# Modelled on upstream's metadata/de.niendo.ImapNotes3.yml, with the pieces that
+# do not apply to this fork removed: the author's Binaries (F-Droid signs our
+# APKs with its own key, so no AllowedAPKSigningKeys either) and the lint sed
+# prebuild (the lint block is commented out in build.gradle).
+
+Categories:
+  - Email
+  - Internet
+  - Note
+  - Writing
+License: GPL-3.0-only
+AuthorName: enimatek
+AuthorEmail: fdroid@enimatek.nl
+SourceCode: https://github.com/enimatek-nl/ImapNotesX
+IssueTracker: https://github.com/enimatek-nl/ImapNotesX/issues
+Changelog: https://github.com/enimatek-nl/ImapNotesX/releases
+
+AutoName: ImapNotesX
+
+RepoType: git
+Repo: https://github.com/enimatek-nl/ImapNotesX.git
+
+Builds:
+  - versionName: v1.5-01
+    versionCode: 10500
+    commit: REPLACE_WITH_THE_COMMIT_OF_THE_v1.5-01_TAG
+    subdir: ImapNotesX
+    gradle:
+      - yes
+    # If the build image's JDK is too old for AGP 9.x, uncomment the sudo block
+    # (this is what upstream used while the image caught up):
+    # sudo:
+    #   - echo "deb https://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list
+    #   - apt-get update
+    #   - apt-get install -y -t trixie openjdk-21-jdk-headless
+    #   - update-alternatives --auto java
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[\d.-]+$
+CurrentVersion: v1.5-01
+CurrentVersionCode: 10500
