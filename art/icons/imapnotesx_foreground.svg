@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ImapNotesX adaptive-icon FOREGROUND layer (transparent, 108x108).
+     Mirror of art/icons/imapnotesx_master.svg and
+     ImapNotesX/src/main/res/drawable/ic_launcher_fg.xml - keep all three in sync.
+     The pencil "halo" path is painted in @color/ic_launcher_background so the
+     crossing gap reads as a gap. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+
+    <!-- pad: white top band + ruled line -->
+    <path d="M0,9 H108 V28 H0 Z" fill="#FFFFFF"/>
+    <path d="M0,28 H108 V31.5 H0 Z" fill="#C7A46A"/>
+
+    <!-- faint ruled lines in the yellow body (kept behind the mark) -->
+    <path d="M0,43 H108 V45.5 H0 Z" fill="#EBBE3F"/>
+    <path d="M0,59 H108 V61.5 H0 Z" fill="#EBBE3F"/>
+    <path d="M0,75 H108 V77.5 H0 Z" fill="#EBBE3F"/>
+
+    <!-- fountain pen: cap upper-left, nib lower-right -->
+    <g transform="translate(54,59) rotate(45) scale(0.95)">
+      <path d="M-8.4,-6.2 H8 V6.2 H-8.4 Z" fill="#2A4FA8"/>
+      <path d="M-8.5,-6.4 H-25 A3.5,6.4 0 0 0 -25,6.4 H-8.5 Z" fill="#1B2A6B"/>
+      <path d="M-26.5,-8.9 H-13.4 V-6.3 H-26.5 Z" fill="#C4CEE0"/>
+      <path d="M-11.2,-6.6 H-8.4 V6.6 H-11.2 Z" fill="#C4CEE0"/>
+      <path d="M8,-6.2 L14,-4.7 L14,4.7 L8,6.2 Z" fill="#1B2A6B"/>
+      <path d="M14,-4.8 L26,-2 Q29,0 26,2 L14,4.8 Z" fill="#C4CEE0"/>
+      <path d="M20.4,0 H28.4" stroke="#6E7C99" stroke-width="1.1" fill="none"/>
+      <circle cx="19.4" cy="0" r="1.5" fill="#6E7C99"/>
+    </g>
+
+    <!-- pencil: eraser lower-left, lead upper-right. The first path is a halo in
+         the background colour; it cuts the gap where the pencil crosses the pen -->
+    <g transform="translate(54,59) rotate(-45) scale(0.95)">
+      <path d="M-31.5,-8 H18 L30.5,0 L18,8 L-31.5,8 Z" fill="#F7C948" stroke="#F7C948"
+          stroke-width="3" stroke-linejoin="round"/>
+      <path d="M-30,-5.4 H-24.6 V5.4 H-30 Z" fill="#F08A8A"/>
+      <path d="M-24.6,-6 H-19.6 V6 H-24.6 Z" fill="#DCE2EA"/>
+      <path d="M-23,-6 V6 M-20.8,-6 V6" stroke="#AEB8C6" stroke-width="0.8" fill="none"/>
+      <path d="M-19.6,-6 H16 V6 H-19.6 Z" fill="#E4572E"/>
+      <path d="M-19.6,-3.4 H16 V-0.6 H-19.6 Z" fill="#F2794F"/>
+      <path d="M-19.6,3.2 H16 V6 H-19.6 Z" fill="#C7431F"/>
+      <path d="M16,-6 L27.5,0 L16,6 Z" fill="#F5D3A1"/>
+      <path d="M21.4,-3.2 L29.6,0 L21.4,3.2 Z" fill="#33312E"/>
+    </g>
+  </g>
+</svg>
