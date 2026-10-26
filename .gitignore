@@ -43,3 +43,6 @@ keystore.jks.bak
 # python icon tooling
 __pycache__/
 *.pyc
+
+# local development artifacts (mock IMAP mailbox)
+dev/
