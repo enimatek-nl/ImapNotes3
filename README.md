@@ -1,165 +1,93 @@
+# ImapNotesX
 
-<p style="text-align: center;">
-  <img src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/featureGraphic.png" alt="Logo"/>
-</p>
-<p style="text-align: center;">
-<a href="https://github.com/enimatek-nl/ImapNotesX/releases"><img alt="GitHub Release ImapNotesX" src="https://img.shields.io/github/v/release/enimatek-nl/ImapNotesX"></a>
-<a href="https://github.com/niendo1/richeditor-android"><img alt="GitHub Release RichEditor" src="https://img.shields.io/github/v/release/niendo1/richeditor-android?label=RichEditor"></a>
-<a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License_GPL_v3"/></a>
-<a href="https://f-droid.org/packages/nl.enimatek.imapnotesx/"><img alt="F-Droid Version" src="https://img.shields.io/f-droid/v/nl.enimatek.imapnotesx"></a>
-</p>
+**Notes that live in your IMAP mailbox.** A free and open source Android app for notes and
+checklists, synchronized as standard HTML e-mail in the *Apple Notes* wire format — so the same
+mailbox works with Apple devices, with Thunderbird, and with other IMAP clients.
 
-ImapNotesX
-==========
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" height="80">](https://f-droid.org/en/packages/nl.enimatek.imapnotesx/)
+<!-- the F-Droid link goes live as soon as the first fdroiddata merge request is built -->
 
-A notes and checklist Android app that synchronizes in your IMAP mailbox.
+ImapNotesX is a community fork of [ImapNotes3](https://github.com/niendo1/ImapNotes3) (GPLv3) with
+its own name, package id and logo. It installs side by side with the original and talks to the same
+mailboxes; the wire format has not changed.
 
-**ImapNotesX is a community fork of
-[ImapNotes3](https://github.com/niendo1/ImapNotes3)** — same IMAP wire format, same
-notes on your server, own name / icon / release cadence. It installs next to the
-original app (package `nl.enimatek.imapnotesx`) and reads the very same mailbox, so
-notes stay interchangeable with Apple devices and with the original app.
-Releases are built by F-Droid from the tagged sources, see [docs/FDROID.md](docs/FDROID.md).
+## Screenshots
 
-### Screenshots
+| Accounts | Notes | Editor |
+| :--: | :--: | :--: |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="230"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="230"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="230"> |
+| <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="230"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="230"> | <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="230"> |
 
-<img width="29%" style="border:5px"
-src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png"/>
-<img width="29%" style="border:5px"
-src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png"/>
-<img width="29%" style="border:5px"
-src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png"/>
-<img width="29%" style="border:5px"
-src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"/>
-<img width="29%" style="border:5px"
-src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/5.png"/>
-<img width="29%" style="border:5px"
-src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/6.png"/>
+## Features
 
-### Features
+### IMAP-based synchronisation
 
-A free and fast notes editor for Android that allows for synchronization with IMAP servers.
+- Works with any IMAP server (self-hosted or commercial).
+- Notes are stored as HTML e-mails with the Apple Notes headers
+  (`X-Uniform-Type-Identifier: com.apple.mail-note`), so nothing is locked in.
+- Background synchronisation at a chosen interval through the Android sync adapter.
+- Multiple accounts, each with its own IMAP folder and its own notes list.
+- Share text, images and e-mails from any app into the mailbox.
 
-__General Attributes__
+### Notes and lists
 
-* compatible with various IMAP servers (~~Gmail~~, Yahoo, AOL, Posteo, and your server)
-* **OAuth2/XOauth2 is currently not supported, but it will in one of the next releases**
-* security options include _plain text_, _SSL/TLS_, or _STARTTLS_
-* save notes as standard HTML E-mails
-* manage multiple IMAP accounts and/or notepads
-* works offline (with background synchronization)
+- Rich text editor: bold, italic, underline, headings, lists, checkboxes, tables, links, images.
+- Nine note background colours, remembered per note.
+- Tags: write `#hashtags` in a note, filter and search by them.
+- Sort by date, title or colour; full-text search.
+- Share a note as text or as the original `.eml` file.
+- Backup and restore to a zip archive.
 
-__Feature-Rich HTML Editor__
+### Accounts first
 
-* versatile text formatting
-* image integration
-* create checklists
-* full-text search
-* font colors
+The app opens on the account overview; every notes screen belongs to exactly one account. Account
+setup checks the IMAP connection before anything is written, and explains what failed.
 
-__Additional Capabilities__
+## Privacy
 
-* no tracking or advertising
-* light and dark mode support
-* filter and organize your notes by _#HashTags_
-* note sharing with other apps (import/export)
-* backup notes as local zip archive
-* restore all or just a single note from a local archive
+No trackers, no analytics, no accounts other than your own IMAP credentials. Everything is stored
+either on the device or in your mailbox — you keep the only copy that matters.
 
-All of these features are contained in this fully open source app, which has no tracking or
-advertising, and requires only minimal user permissions.
+## Download and build
 
-#### Related Tools
+- **Install:** the [F-Droid entry](https://f-droid.org/en/packages/nl.enimatek.imapnotesx/)
+  (signed by F-Droid, auto-updated) or a release APK from
+  [Releases](https://github.com/enimatek-nl/ImapNotesX/releases).
+- **Build:** `./gradlew assembleDebug` — needs an Android SDK with `compileSdk 37`
+  (`ANDROID_HOME` or `local.properties`) and JDK 17+.
 
-* [IOS Imap Notes](https://addons.thunderbird.net/de/thunderbird/addon/ios-imap-notes/) a
-  Thunderbird-Plugin which allows you to edit notes on your desktop.
+## Translations
 
-### Translation
+Fifteen translations plus the English base, maintained directly in this repository: edit
+`ImapNotesX/src/main/res/values-<locale>/strings.xml` and open a pull request. The base string set
+is `ImapNotesX/src/main/res/values/strings.xml`; untranslated strings fall back to English.
 
-Translations are maintained directly in this repository: edit the
-`ImapNotesX/src/main/res/values-<locale>/strings.xml` files (base English in
-`values/strings.xml` is the reference) and send a pull request.
-Your help is greatly appreciated.
-If your favourite language is missing, just drop me an email.
+## License
 
-_Catalan:_ polrojas<br>
-_Chinese:_ sr093906, hamburger2048 (大王叫我来巡山), pyccl, Xue Xuan, bj y<br>
-_Czech:_ LibreTranslate<br>
-_French:_ z97febao, e2jk<br>
-_German:_ niendo1<br>
-_Italian:_ 77nnit<br>
-_Norwegian:_ kwhitefood<br>
-_Portuguese:_ weblate<br>
-_Russian:_ pazengaz<br>
-_Spanish:_ gallegonovato<br>
-_Ukrainian:_ Maxim Reznik<br>
+GPL-3.0-only. See [LICENSE](LICENSE).
 
-#### Contributors
+## Credits
 
-nb(enm), N0uri, c0238, Axel Strübing, 7nnit, Poussinou, woheller69, Martin Carpella (carpi),
-cocklemon, john-p-williams, wdl923, Ulli Rainer Heist, Andreas Hotz, midros, ...
+- Fork lineage: **imapnote** → [nbenm/ImapNote2](https://github.com/nbenm/ImapNote2) →
+  [kwhitefoot/ImapNote2](https://github.com/kwhitefoot/ImapNote2) →
+  [niendo1/ImapNotes3](https://github.com/niendo1/ImapNotes3) → **ImapNotesX**.
+- Based in part on [ImapNote by axiomat](https://github.com/axiomat/ImapNote)
+  (BSD-licensed).
+- The [iOS IMAP Notes](https://github.com/padj/ThunderBird-IMAP_Notes) Thunderbird add-on by
+  Patrick Schuster for the reverse-engineered wire format.
+- [RichEditor-Android](https://github.com/wasabeef/richeditor-android) and the
+  [niendo1 fork](https://github.com/niendo1/richeditor-android) used for the editor.
 
-### History
+## Development
 
-This project is a clone from https://github.com/nbenm/ImapNote2. It also uses some changes
-from https://github.com/kwhitefoot/ImapNote2 and maybe others
+```sh
+./gradlew assembleDebug              # build the debug APK
+./gradlew lintDebug                  # lint report (MissingTranslation noise is expected)
+python3 scripts/mock_imap_server.py --port 1143 &   # local test mailbox, see AGENTS.md
+python3 scripts/dev_setup_account.py --reinstall --name "My Notes"
+python3 scripts/dev_screenshots.py   # regenerate the store screenshots
+```
 
-Sync your notes between Android, iOs devices and different accounts like Gmail, iCloud and others
-
-This project is a fork of "imapnote" one created by boemianrapsodi (boemianrapsody@gmail.com).
-Probably Pasquale Boemio. Some things didn't work correctly but it was impossible to contact him to
-correct these bugs.
-
-Original app is named "imapnote", and is available at https://code.google.com/p/imapnote/, So I
-decided to name this one "imapnote2". It is under the GPL v3 License, same as "imapnote"
-
-It is based on Apple way to manage notes. They are stored in an imap folder named "Notes". imapnote
-uses Gmail for syncing. As I use my own imap server, I have modified it to be used with any imap
-server that respects Apple method. It has been tested with Gmail, iCloud (imap.mail.me.com),
-Yahoo! (imap.mail.yahoo.com), AOL (imap.aol.com), posteo.de and of course my server. Even if not
-still tested, it should work with others.
-
-Main changes in ImapNotesX are:
-
-- new name, new icon (crossed pencil + fountain pen X) and package `nl.enimatek.imapnotesx`,
-  so it can be installed alongside ImapNotes3
-- builds and tags drive releases: `scripts/release.sh` + `.github/workflows/android-release.yml`
-- no keystore needed to build (release signing is wired up only when `keystore.jks` exists)
-- pinned dependency versions for F-Droid's reproducible builds
-
-Main changes in ImapNotes3 are:
-
-- uses a customized version of [RichEditor-Android](https://github.com/niendo1/richeditor-android)
-  with a lot of new features
-- developed with android studio 2023 and latest tool chain
-- HTML Editor with tables, images, sections, check boxes and much more
-- color support
-- full text search
-- sdk version 34
-- sharing / receiving data
-- notes are saved as standard HTML E-mails
-- notes from posteo.de and gmail.com are working again
-
-Main changes in ImapNote2 are :
-
-- app can be used with other servers, not only gmail
-- it's possible to open notes
-- no permissions are needed by the app
-- it works in landscape and portrait modes. Landscape is useful with some devices
-- it's possible to delete notes (trash option on detail screen)
-- it's possible to create new notes ("new note" option on list screen)
-- it's possible to modify notes (change note on detail screen, then save it with disk icon)
-- navigation uses ActionBar (minSdkVersion=14)
-- even if not recommended, untrusted certificates can be used.
-- imap port number can be chosen. 993 is no more the only one accepted
-- security can be plain text, SSL/TLS or STARTTLS
-- multiple accounts can be used. Android account manager is used
-- works offline and sync is done in the background. Sync interval can be different for each account
-
-### Download
-
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-alt="Get it on F-Droid"
-height="80">](https://f-droid.org/packages/nl.enimatek.imapnotesx/)
-
-Or get the APK from the [Releases Section](https://github.com/enimatek-nl/ImapNotesX/releases/latest).
+Branches: `main` is what ImapNotesX ships; `upstream-pr` carries only the changes meant for
+niendo1/ImapNotes3. Releases are tagged on `main`, built by GitHub Actions and picked up by
+F-Droid — see [docs/FDROID.md](docs/FDROID.md).
