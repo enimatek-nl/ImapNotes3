@@ -1,16 +1,22 @@
-# AGENTS.md — ImapNotes3
+# AGENTS.md — ImapNotesX
 
 Guide for AI agents working in this repository. Read this before making changes.
 
 ## What this project is
 
-**ImapNotes3** is a FOSS Android notes/checklist app (GPLv3) that synchronizes notes
+**ImapNotesX** is a FOSS Android notes/checklist app (GPLv3) that synchronizes notes
 through an **IMAP mailbox** using the **Apple Notes wire format**: each note is a
 standard HTML e-mail (`X-Uniform-Type-Identifier: com.apple.mail-note`,
 `X-Universally-Unique-Identifier: <uuid>`) stored in an IMAP folder named `Notes`.
 This makes notes interoperable with Apple devices and the "iOS IMAP Notes" Thunderbird add-on.
 
-Fork lineage: `imapnote` → `nbenm/ImapNote2` → `kwhitefoot/ImapNote2` → `niendo1/ImapNotes3` (current, https://github.com/niendo1/ImapNotes3). Published on F-Droid as `de.niendo.ImapNotes3`. Translations live in `res/values-*/strings.xml` and are **maintained directly in this repo** — edit the locale files by hand; base `res/values/strings.xml` is the canonical key set. (Upstream historically used hosted.weblate.org, which is how most existing translations arrived, but this fork no longer depends on it.)
+Fork lineage: `imapnote` → `nbenm/ImapNote2` → `kwhitefoot/ImapNote2` → `niendo1/ImapNotes3` →
+**ImapNotesX** (this repo, https://github.com/enimatek-nl/ImapNotesX). ImapNotesX is a community
+fork with its own identity: applicationId **`nl.enimatek.imapnotesx`** (F-Droid id), own name
+(`R.string.app_name`) and own logo — but the Java package / Gradle `namespace` are still
+`de.niendo.ImapNotes3`, so **do not** mass-rename packages, layout class tags or
+`parentActivityName` values. The fork installs side by side with upstream, and the IMAP wire
+format (and therefore the mailbox content) is identical. Translations live in `res/values-*/strings.xml` and are **maintained directly in this repo** — edit the locale files by hand; base `res/values/strings.xml` is the canonical key set. (Upstream historically used hosted.weblate.org, which is how most existing translations arrived, but this fork no longer depends on it.)
 
 Since the `v1.4-07` line the app uses an **account-first navigation** ("iOS Notes style"):
 the app starts on the account overview, every notes screen belongs to exactly one account, and
@@ -19,17 +25,18 @@ there is **no "all accounts" screen any more**. See [Screen & navigation archite
 ## Tech stack
 
 - **Language: Java only** (~9,300 LOC, 33 files). No Kotlin. `compileOptions` = Java 17.
-- Single Gradle module `:ImapNotes3` (`settings.gradle`), old Groovy DSL (`build.gradle`).
+- Single Gradle module `:ImapNotesX` (`settings.gradle`), old Groovy DSL (`build.gradle`).
 - **Gradle wrapper 9.7**, **AGP 9.3.1**, `foojay-resolver-convention` plugin (auto-downloads JDK toolchain).
-- `compileSdk 37`, `targetSdk 35`, `minSdk 25`, namespace/applicationId `de.niendo.ImapNotes3`.
-- **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10407` / `v1.4-07`).
+- `compileSdk 37`, `targetSdk 35`, `minSdk 25`, namespace `de.niendo.ImapNotes3`,
+  applicationId `nl.enimatek.imapnotesx`.
+- **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10500` / `v1.5-01`).
 - UI stack: `androidx.appcompat` 1.8.0 + Material 1.14.0 (`ImapNotesTheme`, light/dark via `values-night`), `swiperefreshlayout` 1.2.0, `androidx.preference` 1.2.1.
-- Key libraries (`ImapNotes3/build.gradle`):
+- Key libraries (`ImapNotesX/build.gradle`):
     - `com.sun.mail:android-mail` / `android-activation` 1.6.8 — JavaMail (IMAP client + MIME parsing)
     - `org.jsoup:jsoup` — HTML manipulation of note bodies
     - `com.github.niendo1:richeditor-android:3.0.4` — **the maintainer's own fork** of RichEditor-Android, resolved from JitPack; API diverges from upstream (tables, checkboxes, colors, JS click/HTML callbacks)
     - `io.github.eltos:simpledialogfragments:3.10` — all dialogs
-    - `commons-io`, `com.github.woheller69:FreeDroidWarn:V1.+` (non-free-SDK warning dialog; note the **dynamic version**)
+    - `commons-io`, `com.github.woheller69:FreeDroidWarn:V1.14` (non-free-SDK warning dialog — **keep the version pinned**, F-Droid rejects dynamic versions)
     - `org.jetbrains:annotations` — mostly incidental, `androidx.annotation` is what the code uses
 - Repos: `google()`, `mavenCentral()`, **`jitpack.io`** (required for the RichEditor fork + FreeDroidWarn).
 
@@ -37,12 +44,16 @@ there is **no "all accounts" screen any more**. See [Screen & navigation archite
 
 ```
 build.gradle / settings.gradle / gradle.properties   # root build (AGP version, repos, gradle flags)
-ImapNotes3/                                          # the only module
+ImapNotesX/                                          # the only module
   build.gradle                                       # android config + deps
   src/main/AndroidManifest.xml                       # versionCode/Name, activities, services, provider
   src/main/java/de/niendo/ImapNotes3/                # all code, packages below
   src/main/res/                                      # layouts, menus, values-* (15+ locales), xml/ configs
   src/main/assets/custom.css                         # CSS injected into the RichEditor WebView
+fdroid/nl.enimatek.imapnotesx.yml                    # draft recipe for the fdroiddata repo
+docs/FDROID.md                                       # release/publishing pipeline for this fork
+scripts/make_icons.py                                # regenerates all launcher + store bitmaps
+scripts/release.sh                                   # bump manifest version, build, tag, push
 fastlane/metadata/android/                           # F-Droid store listings only (no Fastfile)
 art/                                                 # artwork sources
 ```
@@ -67,7 +78,7 @@ AccountListActivity  (LAUNCHER + all share intent filters, singleTop, exported)
   `SettingsActivity.MAIN_PREFERENCE_NAME`), and routes incoming shares to one account.
 - **`ListActivity`** is always scoped: the account name arrives as the intent extra
   `ListActivity.EDIT_ITEM_ACCOUNTNAME` and is kept in `scopedAccountName` for the screen's
-  lifetime. It is **not exported**, so `adb shell am start -n de.niendo.ImapNotes3/.ListActivity`
+  lifetime. It is **not exported**, so `adb shell am start -n nl.enimatek.imapnotesx/.ListActivity`
   is refused — drive it through `AccountListActivity` (e.g. by firing a share intent).
 - **Share intents** (`SEND` text/image/rfc822, `SEND_MULTIPLE`) are registered on
   `AccountListActivity`: `IsShareIntent()` + `routeShareIntent()` pick the account (ask when more
@@ -94,7 +105,7 @@ AccountListActivity  (LAUNCHER + all share intent filters, singleTop, exported)
   on Android 16). Anti-spoofing rule kept: changed server + empty password →
   `R.string.imap_server_changed_new_password`, stay on the form.
 
-## Package map (`de.niendo.ImapNotes3`)
+## Package map (`de.niendo.ImapNotes3` — Java packages keep the upstream name)
 
 | Package / class                                     | Role                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -106,7 +117,7 @@ AccountListActivity  (LAUNCHER + all share intent filters, singleTop, exported)
 | `SettingsActivity` + `res/xml/root_preferences.xml` | Appearance (editor colors per light/dark mode), backup/restore entries, debug report, about. Main prefs file: `MAIN_PREFERENCE_NAME = "<applicationId>_preferences"`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `NotesListAdapter` (628 LOC)                        | Filterable list adapter; notes are `OneNote` maps. Renders title / short date / snippet, wires the swipe-revealed delete button (`RowActionListener`), and caches note snippets per file + mtime (`SNIPPET_CACHE_SIZE`, `SNIPPET_MAX_LENGTH`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `Data/`                                             | `NotesDb` (SQLiteOpenHelper singleton, DB `NotesDb` v4: `notesTable`, `tagsTable`, join view `tagsView`); `OneNote` (note metadata as `HashMap<String,String>`, incl. `save_state`: `""`/SAVING/SYNCING/FAILED, and the non-persistent `SNIPPET` key); `ImapNotesAccount` (wraps `AccountManager` account + userdata); `ConfigurationFieldNames` (userdata keys: username, imapfolder, server, portnum, syncinterval, security, copyImapFolder*); `Security` enum (None/SSL_TLS/STARTTLS ± accept-all-certs, default ports 143/993, OAUTH2 commented out — **not yet supported**); `SyncInterval` enum (off/15min/1h/6h/1d).                                                                                                                                                                                                                                                                                            |
-| `Sync/`                                             | Android **AccountAuthenticator + SyncAdapter** framework glue. Account type = `de.niendo.ImapNotes3`, content authority = `de.niendo.ImapNotes3.provider` (needs `StubProvider`, a no-op ContentProvider — required by the sync framework, its purpose is noted as TODO in the manifest). `SyncAdapter.onPerformSync` = the real background sync: `ConnectToRemote` (IMAP), `handleNewNotes` (upload local), `handleDeletedNotes`, `SyncUtils.handleRemoteNotes` (download), plus `RememberError` collecting the first user-visible sync error and per-step duration logs. `SyncService` broadcasts `SYNC_FINISHED`. `SyncUtils` also handles local `.eml` file I/O (`GetNoteFile`, `CreateLocalDirectories`, `RemoveAccount`), remote folder opening (`OpenRemoteIMAPNotesFolder(mode)` + `RemoteFolderIsReadOnly()`), UIDValidity tracking in per-account SharedPreferences, and batched fetching via `FetchProfile`. |
+| `Sync/`                                             | Android **AccountAuthenticator + SyncAdapter** framework glue. Account type = `nl.enimatek.imapnotesx` and content authority = `nl.enimatek.imapnotesx.provider` (both are `BuildConfig.APPLICATION_ID`-derived in code via `Utilities.PackageName`, but hardcoded in `res/xml/authenticator.xml` + `res/xml/syncadapter.xml` and must be changed together with `applicationId`) (needs `StubProvider`, a no-op ContentProvider — required by the sync framework, its purpose is noted as TODO in the manifest). `SyncAdapter.onPerformSync` = the real background sync: `ConnectToRemote` (IMAP), `handleNewNotes` (upload local), `handleDeletedNotes`, `SyncUtils.handleRemoteNotes` (download), plus `RememberError` collecting the first user-visible sync error and per-step duration logs. `SyncService` broadcasts `SYNC_FINISHED`. `SyncUtils` also handles local `.eml` file I/O (`GetNoteFile`, `CreateLocalDirectories`, `RemoveAccount`), remote folder opening (`OpenRemoteIMAPNotesFolder(mode)` + `RemoteFolderIsReadOnly()`), UIDValidity tracking in per-account SharedPreferences, and batched fetching via `FetchProfile`. |
 | `Miscs/`                                            | `HtmlNote` — **the IMAP wire-format codec**: `GetMessageFromNote` (note → MimeMessage with Apple headers + body background-color) and `GetNoteFromMessage` (→ text + color). `UpdateThread` (AsyncTask: user-initiated insert/update/move-to-deleted on the server), `SyncThread`, `LoginThread` (connection check + account write), `BackupRestore` + `ZipUtils` (zip archive backup/restore in `Documents/`), `SmtpServerNameFinder`, `Utilities` (package/app names, `EMAIL_FILE_EXT="eml"`, `HASHTAG_PATTERN`, color name↔id, `GetShortDateString`), `EditorMenuAdapter`, `AboutDialogFragment`, `NDSpinner`, `Result`/`ImapNotesResult`, **`SwipeRevealRow` + `SwipeRevealListView`** (the shared swipe-to-reveal row mechanism used by both lists).                                                                                                                                                               |
 
 ## Swipe-reveal rows (`Miscs/SwipeRevealRow` + `SwipeRevealListView`)
@@ -164,12 +175,30 @@ constraints that are easy to break:
   Still open: first import of a mailbox fetches each body one note at a time (JavaMail has no
   `FetchProfile` item for content), and the list is only redrawn after the whole sync.
 
+## Icon & artwork
+
+The launcher mark is the iOS-Notes "yellow pad" with an X made of a crossed pencil and fountain
+pen. One master file plus generated/hand-mirrored derivatives:
+
+- `art/icons/imapnotesx_master.svg` — source of truth (108x108 adaptive-icon geometry, background
+  rect + `#foreground` group; background colour must match `@color/ic_launcher_background`).
+- `art/icons/imapnotesx_foreground.svg`, `art/icons/imapnotesx_monochrome.svg` — layer SVGs.
+- `ImapNotesX/src/main/res/drawable/ic_launcher_fg.xml` / `ic_launcher_monochrome.xml` — the same
+  geometry as VectorDrawable, referenced by `mipmap-anydpi-v26/ic_launcher{,_round}.xml`
+  (which also declares `<monochrome>` for themed icons).
+- `scripts/make_icons.py` rasterizes the master into `mipmap-*/ic_launcher{,_round}.png` (API < 26
+  fallbacks) and the fastlane `icon.png` / `featureGraphic.png`:
+  `uv run --with pillow python3 scripts/make_icons.py` (plain Pillow also works).
+- The crossing gap in the mark is drawn as a "halo" path in the background colour — keep the halo
+  colour equal to `@color/ic_launcher_background`, and keep the mark below the ruled line (y > 31.5)
+  or the halo eats into the white band.
+
 ## Build & run
 
 ```sh
-./gradlew assembleDebug      # APK: ImapNotes3/build/outputs/apk/debug/ImapNotes3-<versionName>-debug.apk
+./gradlew assembleDebug      # APK: ImapNotesX/build/outputs/apk/debug/ImapNotesX-<versionName>-debug.apk
 ./gradlew assembleRelease
-./gradlew lintDebug          # report: ImapNotes3/build/intermediates/lint_intermediate_text_report/debug/.../lint-results-debug.txt
+./gradlew lintDebug          # report: ImapNotesX/build/intermediates/lint_intermediate_text_report/debug/.../lint-results-debug.txt
 ```
 
 Requirements: Android SDK with `compileSdk 37` + `local.properties` (sdk.dir) or `ANDROID_HOME`
@@ -178,7 +207,10 @@ JDK 17+ (toolchain auto-provisioned via foojay; a system JDK 21 works fine).
 
 **Gotchas:**
 
-- `build.gradle` defines a `release` signingConfig pointing to `../keystore.jks` **which is not in the repo** (`keystore.jks` is gitignored), and _both_ `debug` and `release` build types use it. A fresh clone fails at signing. Workaround: generate a debug keystore at the repo root (`keytool -genkey -keystore keystore.jks -alias ImapNotes -keypass ImapNotes -storepass ImapNotes -dname CN=dev`) or point the build at your own config. Plaintext keystore passwords are committed in `build.gradle` (legacy, F-Droid-issued-style setup) — don't "fix" silently.
+- Signing is **conditional**: `ImapNotesX/build.gradle` wires the `release` signingConfig (root
+  `keystore.jks`, gitignored) only when that file exists; without it both build types fall back to
+  the debug key, so a fresh clone and the F-Droid buildbot build fine. Generating a local keystore
+  at the repo root (`keytool -genkey -keystore keystore.jks -alias ImapNotes -keypass ImapNotes -storepass ImapNotes -dname CN=dev`) restores "real" signing. The old plaintext passwords are still in `build.gradle` as fallbacks (overridable via `IMAPNOTES_KEYSTORE_PASSWORD` / `IMAPNOTES_KEY_PASSWORD`) — legacy, don't "fix" silently.
 - APK output names are customized: `${project.name}-${versionName}-${buildType}.apk`.
 - `minifyEnabled`/`shrinkResources` are **false**; `proguard-rules.pro` mainly silences JavaMail warnings and keeps `R.color` fields (colors are looked up reflectively by name in `Utilities.getColorIdByName` — renaming color resources breaks this, and lint's `UnusedResources` flags some note colours as dead because of it).
 - `./gradlew lintDebug` currently **fails the task** on findings (last run: 195 errors / 108 warnings). **Every one of the 195 errors is `MissingTranslation`** for base-English strings not yet present in one or more of the 15 locale files — expected while translations are filled in, not breakage. Most warnings are known false positives: `NonConstantResourceId` (because `nonFinalResIds=false`) and the note-background colours flagged by `UnusedResources` (they are fetched by name at runtime). Do not chase either.
@@ -199,8 +231,15 @@ JDK 17+ (toolchain auto-provisioned via foojay; a system JDK 21 works fine).
 
 ## Git / release practices
 
-- Main branch `master`; remote `origin` = github.com/niendo1/ImapNotes3. Feature branches exist (`hashtag`, `Attachment`, `v1_1_richeditor_update`).
-- Release flow: bump `versionCode` + `versionName` in **AndroidManifest.xml**, tag, GitHub release APK + F-Droid (fastlane metadata). Translation changes are ordinary commits editing `res/values-*/strings.xml` (older history shows them as "Translated using Weblate (...)" commits from the upstream setup).
+- Main branch `master`; the fork identity lives on `ImapNotesX` (branched from upstream `master`).
+  Remote `origin` = github.com/enimatek-nl/ImapNotesX; keep an `upstream` remote pointing at
+  github.com/niendo1/ImapNotes3 and rebase/cherry-pick from it rather than merging back.
+- Release flow: write `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, then
+  `scripts/release.sh <versionName> <versionCode>` (bumps the manifest, builds, commits, tags,
+  pushes). GitHub Actions then attaches the release APK to the tag; F-Droid's buildbot builds the
+  same tag from source — see `docs/FDROID.md`. Translation changes are ordinary commits editing
+  `res/values-*/strings.xml` (older history shows them as "Translated using Weblate (...)" commits
+  from the upstream setup).
 - Commit style: short lowercase messages ("gradle and lib updates", "fix for #147", "add swipe actions to account and note lists").
 - Dependency updates are a routine commit type; deps are pinned to recent versions — check upstream (JitPack for the RichEditor fork) when upgrading.
 
@@ -215,7 +254,7 @@ manual/device testing (or `adb`). Useful checks in this area:
 - Navigation: overview → account notes → Up returns to the overview; notes → Settings → Up returns
   the **same** list instance; rotation and `CLEAR_TOP` relaunches keep the account scope.
 - Shares: fire them at `AccountListActivity`, e.g.
-  `adb shell am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "x" de.niendo.ImapNotes3/.AccountListActivity`.
+  `adb shell am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "x" nl.enimatek.imapnotesx/.AccountListActivity`.
 - Sync: watch the `onPerformSync …: … ms` log lines, and test a read-only mailbox if you touch sync.
 - Rows with swipe actions: tap, swipe, scroll (no stuck row), pull-to-refresh still syncs.
 - Editor behavior changes require checking the custom `assets/custom.css` and the forked RichEditor JS interface.

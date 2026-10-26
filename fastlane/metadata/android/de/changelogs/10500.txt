@@ -1,0 +1,4 @@
+* erster ImapNotesX-Release (Community-Fork von ImapNotes3)
+* neuer Name, neue applicationId (nl.enimatek.imapnotesx) und neues Symbol
+* Builds ohne eingecheckten Keystore; reproduzierbare Abhängigkeitsversionen
+* Wisch-Aktionen in Konten- und Notizenlisten, klarere Konten-Navigation

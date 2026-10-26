@@ -1,3 +1,5 @@
+ImapNotesX ist ein Community-Fork von ImapNotes3 von Peter Korf: dasselbe IMAP-Format und dieselben Notizen auf Ihrem Server, nur mit eigenem Namen, eigenem Symbol und eigener Release-Folge. Notizen im Apple-/IMAP-Format bleiben mit dem Original und mit Apple-Geräten austauschbar.
+
 Ein kostenloser und schneller Notizeneditor für Android, der die Synchronisierung mit IMAP-Servern ermöglicht.
 
 Allgemeine Eigenschaften

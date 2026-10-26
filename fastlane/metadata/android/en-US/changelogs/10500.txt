@@ -1,4 +1,4 @@
-* build updates (libs, gradle etc.)
-* smaller icon for changing user settings
-* add FreeDroidWarn
-* fix utf-8 coding on subjects
+* first ImapNotesX release (community fork of ImapNotes3)
+* new name, new applicationId (nl.enimatek.imapnotesx) and new icon
+* builds without a checked-in keystore; F-Droid reproducible dependency versions
+* list and account rows with swipe actions, cleaner account-first navigation

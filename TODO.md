@@ -1,4 +1,4 @@
-# TODO.md — ImapNotes3 code-quality backlog
+# TODO.md — ImapNotesX code-quality backlog
 
 Result of a dead-code / boy-scout scan on 2026-10-24, after the account-first navigation rewrite
 (`v1.4-07` / `10407`). Every "unused" verdict was checked against real call sites, and every line
@@ -15,7 +15,7 @@ collects what the scan and the §1/§2 work turned up on the way.
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 ./gradlew lintDebug
-# report: ImapNotes3/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+# report: ImapNotesX/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
 ./gradlew assembleDebug
 ```
 
@@ -267,9 +267,9 @@ cleanup, which is a judgement call and stays open.
       `UnusedResources` warnings become actionable.
 - [ ] 3.4 `res` — `IconMissingDensityFolder`: no `drawable-hdpi/mdpi/xhdpi`. Either accept
       vector-only drawables (they are all vectors — then suppress) or add raster fallbacks.
-- [ ] 3.5 `build.gradle:101` `com.github.woheller69:FreeDroidWarn:V1.+` is the only dynamic
-      dependency (`GradleDynamicVersion`). Pin it for reproducible builds (note: F-Droid rebuilds
-      from source, so pinning is also what makes their build match yours).
+- [x] 3.5 `FreeDroidWarn:V1.+` was the only dynamic dependency (`GradleDynamicVersion`) — pinned to
+      `V1.14` on the ImapNotesX branch (F-Droid rebuilds from source, so pinning is also what makes
+      their build match ours).
 - [ ] 3.6 Dependency bumps (`NewerVersionAvailable`): `build.gradle:99` jsoup 1.23.1 → 1.23.2;
       `gradle/wrapper/gradle-wrapper.properties:3` Gradle 9.7.0 → 9.8.2. Check JitPack separately
       for the `richeditor-android` fork.
@@ -323,9 +323,11 @@ cleanup, which is a judgement call and stays open.
 - [ ] **RTL support.** The layouts use `start`/`end` attributes, the manifest now says
       `supportsRtl="false"`. Finishing it means auditing every layout for leftover
       `left`/`right`, then flipping it to `true` and looking at the mirrored screens.
-- [ ] **Monochrome launcher icon** (`MonochromeLauncherIcon` ×2): needs a flat silhouette layer, i.e.
-      real artwork (`art/icons/ic_launcher_foreground*.svg` are filter-heavy Inkscape files, the
-      shipped foregrounds are PNGs).
+- [x] **Monochrome launcher icon** (`MonochromeLauncherIcon` ×2) — done with the ImapNotesX relabel:
+      `res/drawable/ic_launcher_monochrome.xml` (line art of the crossed pencil/pen mark, source
+      `art/icons/imapnotesx_monochrome.svg`) is referenced as `<monochrome>` from both
+      `mipmap-anydpi-v26/ic_launcher.xml` and `ic_launcher_round.xml`; the foreground is a vector
+      now too, so `IconMissingDensityFolder`/foreground PNG noise goes away as well.
 - [ ] **The notes list has no empty state.** `account_list.xml` has `@+id/emptyAccounts`, `main.xml`
       has nothing, and `ListActivity` never calls `setEmptyView`. Creating a note now lives only in the
       FAB (the duplicate "New note" entry was removed from `menu/list.xml`, together with the orphaned

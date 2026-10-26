@@ -1,34 +1,40 @@
 
 <p style="text-align: center;">
-  <img src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/featureGraphic.png" alt="Logo"/>
+  <img src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/featureGraphic.png" alt="Logo"/>
 </p>
 <p style="text-align: center;">
-<a href="https://github.com/niendo1/ImapNotes3/releases"><img alt="GitHub Release ImapNote3" src="https://img.shields.io/github/v/release/niendo1/ImapNotes3"></a>
+<a href="https://github.com/enimatek-nl/ImapNotesX/releases"><img alt="GitHub Release ImapNotesX" src="https://img.shields.io/github/v/release/enimatek-nl/ImapNotesX"></a>
 <a href="https://github.com/niendo1/richeditor-android"><img alt="GitHub Release RichEditor" src="https://img.shields.io/github/v/release/niendo1/richeditor-android?label=RichEditor"></a>
 <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License_GPL_v3"/></a>
-<a href="https://f-droid.org/packages/de.niendo.ImapNotes3/"><img alt="F-Droid Version" src="https://img.shields.io/f-droid/v/de.niendo.ImapNotes3"></a>
-<a href="https://hosted.weblate.org/projects/ImapNotes3/"><img src="https://img.shields.io/weblate/progress/ImapNotes3" alt="Translation state"/></a>
+<a href="https://f-droid.org/packages/nl.enimatek.imapnotesx/"><img alt="F-Droid Version" src="https://img.shields.io/f-droid/v/nl.enimatek.imapnotesx"></a>
 </p>
 
-ImapNotes3
+ImapNotesX
 ==========
 
 A notes and checklist Android app that synchronizes in your IMAP mailbox.
 
+**ImapNotesX is a community fork of
+[ImapNotes3](https://github.com/niendo1/ImapNotes3)** — same IMAP wire format, same
+notes on your server, own name / icon / release cadence. It installs next to the
+original app (package `nl.enimatek.imapnotesx`) and reads the very same mailbox, so
+notes stay interchangeable with Apple devices and with the original app.
+Releases are built by F-Droid from the tagged sources, see [docs/FDROID.md](docs/FDROID.md).
+
 ### Screenshots
 
 <img width="29%" style="border:5px"
-src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png"/>
+src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png"/>
 <img width="29%" style="border:5px"
-src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png"/>
+src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png"/>
 <img width="29%" style="border:5px"
-src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png"/>
+src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png"/>
 <img width="29%" style="border:5px"
-src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"/>
+src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/4.png"/>
 <img width="29%" style="border:5px"
-src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/5.png"/>
+src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/5.png"/>
 <img width="29%" style="border:5px"
-src="https://github.com/niendo1/ImapNotes3/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/6.png"/>
+src="https://github.com/enimatek-nl/ImapNotesX/blob/master/fastlane/metadata/android/en-US/images/phoneScreenshots/6.png"/>
 
 ### Features
 
@@ -70,8 +76,9 @@ advertising, and requires only minimal user permissions.
 
 ### Translation
 
-This app can be translated at: <a href="https://hosted.weblate.org/projects/ImapNotes3/">
-weblate.org</a>.
+Translations are maintained directly in this repository: edit the
+`ImapNotesX/src/main/res/values-<locale>/strings.xml` files (base English in
+`values/strings.xml` is the reference) and send a pull request.
 Your help is greatly appreciated.
 If your favourite language is missing, just drop me an email.
 
@@ -112,6 +119,14 @@ server that respects Apple method. It has been tested with Gmail, iCloud (imap.m
 Yahoo! (imap.mail.yahoo.com), AOL (imap.aol.com), posteo.de and of course my server. Even if not
 still tested, it should work with others.
 
+Main changes in ImapNotesX are:
+
+- new name, new icon (crossed pencil + fountain pen X) and package `nl.enimatek.imapnotesx`,
+  so it can be installed alongside ImapNotes3
+- builds and tags drive releases: `scripts/release.sh` + `.github/workflows/android-release.yml`
+- no keystore needed to build (release signing is wired up only when `keystore.jks` exists)
+- pinned dependency versions for F-Droid's reproducible builds
+
 Main changes in ImapNotes3 are:
 
 - uses a customized version of [RichEditor-Android](https://github.com/niendo1/richeditor-android)
@@ -145,6 +160,6 @@ Main changes in ImapNote2 are :
 
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
 alt="Get it on F-Droid"
-height="80">](https://f-droid.org/packages/de.niendo.ImapNotes3/)
+height="80">](https://f-droid.org/packages/nl.enimatek.imapnotesx/)
 
-Or get the APK from the [Releases Section](https://github.com/niendo1/ImapNotes3/releases/latest).
+Or get the APK from the [Releases Section](https://github.com/enimatek-nl/ImapNotesX/releases/latest).

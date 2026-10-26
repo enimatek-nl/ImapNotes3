@@ -39,3 +39,7 @@ gradle/wrapper/gradlew*
 
 keystore.jks
 keystore.jks.bak
+
+# python icon tooling
+__pycache__/
+*.pyc
