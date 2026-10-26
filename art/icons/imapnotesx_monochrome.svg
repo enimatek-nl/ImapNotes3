@@ -3,15 +3,16 @@
   ImapNotesX adaptive-icon MONOCHROME layer (themed icons, API 33+).
   Line art of the same mark: pad band + outlined pencil crossing an outlined
   fountain pen, everything in a single colour so the launcher can tint it.
-  Mirror of ImapNotesX/src/main/res/drawable/ic_launcher_monochrome.xml.
+  Generated to ImapNotesX/src/main/res/drawable/ic_launcher_monochrome.xml by
+  scripts/make_icons.py (edit this file, not the drawable).
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
   <g id="foreground" fill="none" stroke="#000000">
-    <path d="M0,9 H108 V28 H0 Z" fill="#000000" stroke="none"/>
-    <path d="M0,28 H108 V31.5 H0 Z" fill="#000000" stroke="none"/>
+    <path d="M0,18 H108 V36 H0 Z" fill="#000000" stroke="none"/>
+    <path d="M0,36 H108 V39.5 H0 Z" fill="#000000" stroke="none"/>
 
     <!-- fountain pen: cap upper-left, nib lower-right -->
-    <g transform="translate(54,59) rotate(45) scale(0.95)" stroke-width="2.2"
+    <g transform="translate(54,61) rotate(45) scale(0.85)" stroke-width="2.2"
        stroke-linejoin="round">
       <path d="M-25,-6.4 A3.5,6.4 0 0 0 -25,6.4 H8 L14,4.7 L26,2 Q29,0 26,-2 L14,-4.7 L8,-6.4 Z"/>
       <path d="M-26.5,-9 H-13.4 V-6.4 H-26.5 Z"/>
@@ -19,7 +20,7 @@
     </g>
 
     <!-- pencil: eraser lower-left, lead upper-right -->
-    <g transform="translate(54,59) rotate(-45) scale(0.95)" stroke-width="2.2"
+    <g transform="translate(54,61) rotate(-45) scale(0.85)" stroke-width="2.2"
        stroke-linejoin="round">
       <path d="M-27.5,-6 H16 L27.5,0 L16,6 H-27.5 A2.5,6 0 0 1 -27.5,-6 Z"/>
       <path d="M-24.5,-6 V6 M-19.5,-6 V6"/>

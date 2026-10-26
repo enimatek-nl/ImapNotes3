@@ -10,8 +10,13 @@
 #   fastlane/metadata/android/<locale>/images/icon.png
 #   fastlane/metadata/android/en-US/images/featureGraphic.png
 #
-# The adaptive-icon layers for API 26+ are vector drawables in res/drawable and
-# are NOT generated here; keep art/icons/*.svg and those vectors in sync.
+#   ImapNotesX/src/main/res/drawable/ic_launcher_fg.xml          (adaptive foreground)
+#   ImapNotesX/src/main/res/drawable/ic_launcher_monochrome.xml  (themed icon layer)
+#   art/icons/imapnotesx_foreground.svg                          (foreground layer export)
+#
+# The vector drawables are converted from the SVG artwork, so the geometry cannot
+# drift; the monochrome line art itself stays hand-written in
+# art/icons/imapnotesx_monochrome.svg (it is line art, not a colouring of the mark).
 #
 # Usage:  uv run --with pillow python3 scripts/make_icons.py [--outdir DIR]
 #         (plain `python3 scripts/make_icons.py` works if Pillow is installed)
@@ -287,6 +292,93 @@ def find_font(size):
     return ImageFont.load_default()
 
 
+# ------------------------------------------------ SVG -> VectorDrawable conversion
+#
+# The adaptive-icon layers (API 26+) are vector drawables. They are generated from
+# the same SVG artwork the PNGs come from, so the geometry can never drift.
+
+VD_ATTR = {"fill": "fillColor", "stroke": "strokeColor", "stroke-width": "strokeWidth",
+           "stroke-linejoin": "strokeLineJoin", "stroke-linecap": "strokeLineCap"}
+
+
+def _rect_d(node):
+    x, y = float(node.get("x", 0)), float(node.get("y", 0))
+    w, h = float(node.get("width")), float(node.get("height"))
+    return "M%g,%g H%g V%g H%g Z" % (x, y, x + w, y + h, x)
+
+
+def _circle_d(node):
+    cx, cy, r = (float(node.get(k)) for k in ("cx", "cy", "r"))
+    return ("M%g,%g A%g,%g 0 1,0 %g,%g A%g,%g 0 1,0 %g,%g Z"
+            % (cx - r, cy, r, r, cx + r, cy, r, r, cx - r, cy))
+
+
+def vd_groups(transform):
+    """SVG transform list -> list of VectorDrawable <group> attribute dicts.
+
+    VectorDrawable applies scale/rotation about the (pivotX, pivotY) = (0, 0) point
+    and translates last, which is exactly the SVG translate/rotate/scale order, so
+    one nested <group> per transform function reproduces the layer.
+    """
+    out = []
+    for name, args in re.findall(r"(\w+)\s*\(([^)]*)\)", transform or ""):
+        v = numbers(args)
+        if name == "translate":
+            out.append({"translateX": v[0], "translateY": v[1] if len(v) > 1 else 0.0})
+        elif name == "rotate":
+            out.append({"rotation": v[0]})
+        elif name == "scale":
+            out.append({"scaleX": v[0], "scaleY": v[1] if len(v) > 1 else v[0]})
+        else:
+            raise ValueError("transform %r is not supported for vector drawables" % name)
+    return out
+
+
+def emit_nested(node, style, depth, lines):
+    """Emit a <g> element as nested <group> elements wrapping its children."""
+    groups = vd_groups(node.get("transform", ""))
+    for n, attrs in enumerate(groups):
+        lines.append("    " * (depth + n) + "<group " + " ".join(
+            'android:%s="%s"' % (k, "%g" % v) for k, v in attrs.items()) + ">")
+    emit_vd_nodes(list(node), style, depth + len(groups), lines)
+    for n in range(len(groups) - 1, -1, -1):
+        lines.append("    " * (depth + n) + "</group>")
+
+
+def emit_vd_nodes(nodes, style, depth, lines):
+    for node in nodes:
+        tag = node.tag.split("}")[-1]
+        own = {k: node.get(k) for k in VD_ATTR if node.get(k) is not None}
+        cur = dict(style)
+        cur.update(own)
+        indent = "    " * depth
+        if tag == "g":
+            emit_nested(node, cur, depth, lines)
+        elif tag in ("path", "rect", "circle"):
+            d = node.get("d") if tag == "path" else (_rect_d(node) if tag == "rect" else _circle_d(node))
+            attrs = ['android:pathData="%s"' % " ".join(d.split())]
+            for key, attr in VD_ATTR.items():
+                value = cur.get(key)
+                if value is None or value == "none":
+                    continue
+                attrs.append('android:%s="%s"' % (attr, value))
+            lines.append(indent + "<path " + " ".join(attrs) + "/>")
+        else:
+            raise ValueError("element <%s> is not supported" % tag)
+
+
+def write_vector(path, nodes, header):
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', "<!--", "  " + header, "-->",
+             '<vector xmlns:android="http://schemas.android.com/apk/res/android"',
+             '    android:width="108dp" android:height="108dp"',
+             '    android:viewportWidth="108" android:viewportHeight="108">']
+    emit_vd_nodes(list(nodes), {}, 1, lines)
+    lines.append("</vector>")
+    with open(path, "w") as fh:
+        fh.write("\n".join(lines) + "\n")
+    print(os.path.relpath(path, ROOT))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--outdir", default=ROOT, help="write into a copy of the tree (default: repo)")
@@ -303,6 +395,32 @@ def main():
             fg_shapes = data
 
     res = os.path.join(out, "ImapNotesX", "src", "main", "res")
+
+    # ---- adaptive-icon layers for API 26+ (vector drawables)
+    master_root = ET.parse(MASTER).getroot()
+    fg_group = [c for c in master_root
+                if c.tag.split("}")[-1] == "g" and c.get("id") == "foreground"]
+    write_vector(os.path.join(res, "drawable", "ic_launcher_fg.xml"), fg_group,
+                 "GENERATED by scripts/make_icons.py from art/icons/imapnotesx_master.svg -\n     edit the SVG and re-run the script, never this file.")
+
+    mono_svg = os.path.join(ROOT, "art", "icons", "imapnotesx_monochrome.svg")
+    mono_root = ET.parse(mono_svg).getroot()
+    write_vector(os.path.join(res, "drawable", "ic_launcher_monochrome.xml"),
+                 [c for c in mono_root if c.tag.split("}")[-1] == "g"],
+                 "GENERATED by scripts/make_icons.py from art/icons/imapnotesx_monochrome.svg -\n     edit the SVG and re-run the script, never this file.")
+
+    # foreground layer as a standalone SVG (convenience export for designers)
+    text = open(MASTER).read()
+    start = text.index('<g id="foreground">')
+    end = text.rindex("</g>") + len("</g>")
+    with open(os.path.join(ROOT, "art", "icons", "imapnotesx_foreground.svg"), "w") as fh:
+        fh.write('<?xml version="1.0" encoding="UTF-8"?>\n'
+                 '<!-- GENERATED by scripts/make_icons.py from imapnotesx_master '
+                 '(foreground layer only) -->\n'
+                 '<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" '
+                 'viewBox="0 0 108 108">\n  ' + text[start:end] + "\n</svg>\n")
+    print("art/icons/imapnotesx_foreground.svg")
+
     densities = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
     for dpi, px in densities.items():
         scale = px / VB
