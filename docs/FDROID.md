@@ -22,19 +22,53 @@ dynamic `V1.+` version breaks F-Droid's reproducible-build checks).
 
 ## One-time: get the recipe merged
 
-1. Fork <https://gitlab.com/fdroid/fdroiddata>.
-2. `cp fdroid/nl.enimatek.imapnotesx.yml metadata/nl.enimatek.imapnotesx.yml`
-   in that fork, then
-   - set `Repo:` / `SourceCode:` / `IssueTracker:` to the real fork URL,
-   - set `AuthorEmail:` to an address you actually read (F-Droid pings it),
-   - put the commit the release tag points at into the first `Builds:` entry.
-3. Make sure the tag exists on GitHub **before** the merge request is built.
-4. Open the merge request. F-Droid's reviewers build and inspect the app once;
-   expect a round of comments the first time.
-5. Once merged, the app appears in the F-Droid repository within a few hours.
+1. Tag the release first (see *Every release* below), so the commit the recipe points at is public.
+2. Optional but recommended for first-time contributors: open a
+   [Request For Packaging](https://gitlab.com/fdroid/rfp/-/issues) issue with their template.
+3. Register on GitLab, fork <https://gitlab.com/fdroid/fdroiddata>, and work on a **branch named
+   after the app id** — never commit to the fork's `master` (it is protected and triggers pipelines
+   at the wrong time):
+
+   ```sh
+   git clone git@gitlab.com:<you>/fdroiddata.git && cd fdroiddata
+   git checkout -b nl.enimatek.imapnotesx
+   cp ~/Developer/ImapNotes3/fdroid/nl.enimatek.imapnotesx.yml metadata/
+   git rev-parse 'v1.5-01^{commit}'   # put this sha into the recipe's `commit:` field
+   git add metadata/nl.enimatek.imapnotesx.yml
+   git commit -m "add nl.enimatek.imapnotesx"
+   git push -u origin nl.enimatek.imapnotesx
+   ```
+
+4. Check the **CI/CD pipeline of your fork**: it runs the metadata linter. Fix it until it is green.
+5. Open the merge request against `fdroiddata` master and fill in the MR template (commits are
+   squashed by default). `AuthorEmail:` must be an address you actually read — F-Droid pings it.
+6. A packager builds the app from that commit and reviews it; expect a round of comments the first
+   time. Once merged, the app appears in the repository (usually within a day).
+
+Optional local checks (`pip install git+https://gitlab.com/fdroid/fdroidserver.git`; `fdroid build`
+itself needs Docker and is heavy): `fdroid readmeta`, `fdroid rewritemeta nl.enimatek.imapnotesx`,
+`fdroid checkupdates nl.enimatek.imapnotesx`, `fdroid lint nl.enimatek.imapnotesx`.
 
 (Do not register anything on f-droid.org beforehand — the merge request *is* the
 registration. There is no APK upload path at all.)
+
+## Signing and keys
+
+**F-Droid needs no key from you.** It builds from source and signs with its own repository key, so
+the recipe has no `Binaries:` line and no `AllowedAPKSigningKeys`. Nothing has to be configured on
+GitHub for the F-Droid side.
+
+The workflow only needs secrets if the APK attached to the **GitHub release** should be signed with
+a stable key (`KEYSTORE_BASE64` plus `IMAPNOTES_KEYSTORE_PASSWORD` / `IMAPNOTES_KEY_PASSWORD`).
+Without them every CI run signs with a fresh *debug* key, so those APKs cannot update each other in
+place. Also note that an F-Droid APK and a self-signed APK never update one another (different
+signatures) — pick one channel for daily use.
+
+```sh
+# only if you want signed GitHub release APKs — then back keystore.jks up forever
+keytool -genkey -keystore keystore.jks -alias imapnotesx -keyalg RSA -keysize 2048 -validity 10000 -dname CN=ImapNotesX
+base64 -i keystore.jks    # -> repository secret KEYSTORE_BASE64
+```
 
 ## Every release
 
