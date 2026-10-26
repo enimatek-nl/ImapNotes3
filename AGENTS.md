@@ -53,12 +53,18 @@ ImapNotesX/                                          # the only module
 fdroid/nl.enimatek.imapnotesx.yml                    # draft recipe for the fdroiddata repo
 docs/FDROID.md                                       # release/publishing pipeline for this fork
 scripts/make_icons.py                                # regenerates all launcher + store bitmaps
+scripts/mock_imap_seed.py / mock_imap_server.py      # local mailbox + IMAP4rev1 server for testing
+scripts/dev_setup_account.py / dev_screenshots.py    # emulator UI automation / store screenshots
 scripts/release.sh                                   # bump manifest version, build, tag, push
 fastlane/metadata/android/                           # F-Droid store listings only (no Fastfile)
 art/                                                 # artwork sources
 ```
 
-There are **no tests, no CI workflows, no lint baseline** (the `lint { baseline = ... }` block is commented out in `build.gradle`).
+There is **no automated test suite** and no lint baseline (the `lint { baseline = ... }` block is
+commented out in `build.gradle`). CI (`.github/workflows/android-release.yml`) only builds the
+release APK on tags — see [Git / release practices](#git--release-practices).
+Manual verification happens against the mock IMAP server described in
+[Development tooling](#development-tooling-mock-imap-server--ui-automation).
 
 ## Screen & navigation architecture
 
@@ -220,6 +226,42 @@ JDK 17+ (toolchain auto-provisioned via foojay; a system JDK 21 works fine).
 - `minifyEnabled`/`shrinkResources` are **false**; `proguard-rules.pro` mainly silences JavaMail warnings and keeps `R.color` fields (colors are looked up reflectively by name in `Utilities.getColorIdByName` — renaming color resources breaks this, and lint's `UnusedResources` flags some note colours as dead because of it).
 - `./gradlew lintDebug` currently **fails the task** on findings (last run: 195 errors / 108 warnings). **Every one of the 195 errors is `MissingTranslation`** for base-English strings not yet present in one or more of the 15 locale files — expected while translations are filled in, not breakage. Most warnings are known false positives: `NonConstantResourceId` (because `nonFinalResIds=false`) and the note-background colours flagged by `UnusedResources` (they are fetched by name at runtime). Do not chase either.
 - Gradle config cache and `nonTransitiveRClass=false` (plus `nonFinalResIds=false`, `newDsl=false`, `builtInKotlin=false`) are set in `gradle.properties`; keep flags when touching that file.
+
+## Development tooling (mock IMAP server + UI automation)
+
+Everything needed to test the app without a real mailbox (all plain Python 3, no deps):
+
+```sh
+python3 scripts/mock_imap_seed.py                 # (re)create dev/mock_mailbox/*.eml (gitignored)
+python3 scripts/mock_imap_server.py --port 1143 --state /tmp/mock_state.json &
+python3 scripts/dev_setup_account.py --reinstall --name "My Notes"
+python3 scripts/dev_screenshots.py                # the six fastlane phoneScreenshots
+```
+
+- **`scripts/mock_imap_seed.py`** writes six Apple-Notes messages (`X-Uniform-Type-Identifier:
+  com.apple.mail-note`, UUID, background-coloured body, `#tags`) into `dev/mock_mailbox/`.
+  Keep the body HTML **free of `<style>` blocks**: `NotesListAdapter` builds the row snippet with
+  `Html.fromHtml()`, so CSS text would show up in the list.
+- **`scripts/mock_imap_server.py`** is a plaintext IMAP4rev1 server (no TLS; DEV ONLY) that the
+  emulator reaches as **`10.0.2.2:1143`**, user/pw **`notes`/`notes`**, security *none*. It covers
+  CAPABILITY/ID/NOOP/LOGIN/AUTHENTICATE/STARTTLS/NAMESPACE/LIST/LSUB/CREATE/STATUS/SELECT/EXAMINE/
+  UNSELECT/CLOSE/SEARCH/UID(FETCH,STORE,SEARCH,COPY,MOVE)/FETCH/STORE/EXPUNGE/APPEND/COPY/MOVE/
+  CHECK/GETQUOTAROOT/IDLE. Three IMAP details cost hours and are easy to break:
+  ENVELOPE parts must be **quoted strings, never literals** (JavaMail's `ENVELOPE` parser throws a
+  `ParsingException` on literals), the ENVELOPE must have **exactly the 10 RFC 3501 elements**
+  (JavaMail counts them), and a partial FETCH response item is named `BODY[TEXT]<0>` — **only the
+  start offset**, not `<0.558>`.
+- **`scripts/dev_setup_account.py`** drives the whole account-setup form through `uiautomator`
+  (`--reinstall` also drops stray AccountManager accounts, `--wipe` removes them through the swipe
+  row, `--name` may be repeated). Non-obvious: the port field and security spinner live behind
+  `BtnExpandAccountSettings`; a cold app start always re-opens the **last account**, so `go_home()`
+  has to press BACK to reach the overview; `FreeDroidWarn.showWarningOnUpgrade` pops an alert over
+  the notes list once per `versionCode` after `pm clear` → always go through `dismiss_dialog()`
+  (which only acts when an actual alert is on screen — a blind `button1` tap activates rows).
+- **`scripts/dev_screenshots.py`** captures account overview / notes list / note editor in light and
+  dark (`cmd uimode night yes|no`) into `fastlane/metadata/android/en-US/images/phoneScreenshots/`
+  (`1..3` light, `4..6` dark). It refuses to shoot a screen that does not show the expected view,
+  so no dialog or empty list ends up in the store listing.
 
 ## Code conventions (match these)
 
