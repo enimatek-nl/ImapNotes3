@@ -23,7 +23,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      # @v4, not @v3: v3's default package list contains the legacy `tools`
+      # package, which Google removed from the SDK repo, so sdkmanager exits 1
+      # with "Failed to find package 'tools'" (broke the v1.5-01 release run).
+      # v4 defaults to platform-tools only and skips `tools` with a warning.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
       # Optional: keep signing with the project key by storing the keystore
       # base64-encoded (and the passwords) in repository secrets. Without them
