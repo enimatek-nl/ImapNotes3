@@ -22,8 +22,8 @@ package de.niendo.ImapNotes3.Miscs;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
@@ -91,9 +91,6 @@ public class SwipeRevealRow extends FrameLayout {
         // action buttons whatever the layout says. Without this, tapping a row would do nothing.
         // The buttons are still reached by touch, they just cannot take focus.
         setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
-        // While the row is closed the buttons hide under the content but would still be hit, so a
-        // tap on the right edge of a closed row would trigger an action.
-        setActionsTouchEnabled(false);
     }
 
     /**
@@ -113,6 +110,17 @@ public class SwipeRevealRow extends FrameLayout {
         row.revealed = false;
         row.slideContentTo(0f);
         return true;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(@NonNull MotionEvent ev) {
+        if (isTouchCoveredByContent(ev)) {
+            // The panel hides under the content here, so its buttons must not be hit. Refusing the
+            // event hands the gesture to the list, which turns a tap into an item click and can still
+            // recognise a horizontal drag that opens this row.
+            return false;
+        }
+        return super.dispatchTouchEvent(ev);
     }
 
     @Override
@@ -144,7 +152,6 @@ public class SwipeRevealRow extends FrameLayout {
         if (rowContent == null) {
             return;
         }
-        setActionsTouchEnabled(true);
         float translation = rowContent.getTranslationX() + dx;
         rowContent.setTranslationX(Math.max(-getRevealWidth(), Math.min(0f, translation)));
     }
@@ -173,7 +180,6 @@ public class SwipeRevealRow extends FrameLayout {
             rowContent.setTranslationX(0f);
         }
         revealed = false;
-        setActionsTouchEnabled(false);
         forgetIfRevealed(this);
     }
 
@@ -198,7 +204,6 @@ public class SwipeRevealRow extends FrameLayout {
         if (previouslyRevealed != null && previouslyRevealed != this) {
             previouslyRevealed.concealImmediately();
         }
-        setActionsTouchEnabled(true);
         slideContentTo(-getRevealWidth());
     }
 
@@ -221,17 +226,30 @@ public class SwipeRevealRow extends FrameLayout {
     }
 
     /**
-     * Switches the action buttons between tappable and inert, in step with whether they are visible.
+     * Whether the touch of {@code ev} (in this row's coordinates) lands on the part of the action
+     * panel that the sliding content still covers, i.e. where its buttons are not visible.
+     * <p>
+     * The action panel may therefore only be hit where it is actually exposed, which is derived from
+     * the same {@code translationX} the swipe animates. It is deliberately not expressed with the
+     * clickable flag of the buttons, as one might expect: the adapters set a click listener on them
+     * every time they bind a row, and {@link View#setOnClickListener} switches clickability back on,
+     * so clearing that flag in {@link #concealImmediately()} is undone a few lines later in {@code
+     * getView}/{@code bindView}, and the hidden buttons answer a tap on the closed row - in both the
+     * account overview and the note list.
      */
-    private void setActionsTouchEnabled(boolean enabled) {
-        if (rowActions instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) rowActions;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                group.getChildAt(i).setClickable(enabled);
-            }
-        } else if (rowActions != null) {
-            rowActions.setClickable(enabled);
+    private boolean isTouchCoveredByContent(@NonNull MotionEvent ev) {
+        if (rowActions == null || rowContent == null) {
+            return false;
         }
+        float x = ev.getX();
+        float y = ev.getY();
+        if (x < rowActions.getLeft() || x > rowActions.getRight()
+                || y < rowActions.getTop() || y > rowActions.getBottom()) {
+            // Not on the panel at all; the normal dispatch decides, and the content is not clickable.
+            return false;
+        }
+        // The content spans from the left edge of the row to here, so everything right of it is seen.
+        return !revealed || x < rowContent.getWidth() + rowContent.getTranslationX();
     }
 
     private void findParts() {
