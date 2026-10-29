@@ -1,0 +1,3 @@
+* Editor: Warnung über ungespeicherte Änderungen jetzt auch bei Checkboxen, Tabellen und Farben
+* Wisch-Aktionen: ausgeblendete Buttons einer geschlossenen Zeile reagieren nicht mehr
+* intern: Java-Pakete in nl.enimatek.imapnotesx umbenannt

@@ -1,0 +1,3 @@
+* editor: warn about unsaved changes also for checkbox, table and colour edits
+* swipe rows: hidden buttons can no longer be tapped while the row is closed
+* internal: java packages renamed to nl.enimatek.imapnotesx
