@@ -29,7 +29,7 @@ there is **no "all accounts" screen any more**. See [Screen & navigation archite
 - **Gradle wrapper 9.7**, **AGP 9.3.1**, `foojay-resolver-convention` plugin (auto-downloads JDK toolchain).
 - `compileSdk 37`, `targetSdk 35`, `minSdk 25`, namespace `nl.enimatek.imapnotesx`,
   applicationId `nl.enimatek.imapnotesx`.
-- **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10501` / `v1.5-02`).
+- **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10502` / `v1.5-03`).
 - UI stack: `androidx.appcompat` 1.8.0 + Material 1.14.0 (`ImapNotesTheme`, light/dark via `values-night`), `swiperefreshlayout` 1.2.0, `androidx.preference` 1.2.1.
 - Key libraries (`ImapNotesX/build.gradle`):
     - `com.sun.mail:android-mail` / `android-activation` 1.6.8 — JavaMail (IMAP client + MIME parsing)
