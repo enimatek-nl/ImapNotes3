@@ -29,7 +29,7 @@ there is **no "all accounts" screen any more**. See [Screen & navigation archite
 - **Gradle wrapper 9.7**, **AGP 9.3.1**, `foojay-resolver-convention` plugin (auto-downloads JDK toolchain).
 - `compileSdk 37`, `targetSdk 35`, `minSdk 25`, namespace `nl.enimatek.imapnotesx`,
   applicationId `nl.enimatek.imapnotesx`.
-- **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10500` / `v1.5-01`).
+- **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10501` / `v1.5-02`).
 - UI stack: `androidx.appcompat` 1.8.0 + Material 1.14.0 (`ImapNotesTheme`, light/dark via `values-night`), `swiperefreshlayout` 1.2.0, `androidx.preference` 1.2.1.
 - Key libraries (`ImapNotesX/build.gradle`):
     - `com.sun.mail:android-mail` / `android-activation` 1.6.8 — JavaMail (IMAP client + MIME parsing)
@@ -50,7 +50,7 @@ ImapNotesX/                                          # the only module
   src/main/java/de/niendo/ImapNotes3/                # all code, packages below
   src/main/res/                                      # layouts, menus, values-* (15+ locales), xml/ configs
   src/main/assets/custom.css                         # CSS injected into the RichEditor WebView
-fdroid/nl.enimatek.imapnotesx.yml                    # draft recipe for the fdroiddata repo
+fdroid/nl.enimatek.imapnotesx.yml                    # the recipe as submitted to fdroiddata (byte-identical copy)
 docs/FDROID.md                                       # release/publishing pipeline for this fork
 scripts/make_icons.py                                # regenerates all launcher + store bitmaps
 scripts/mock_imap_seed.py / mock_imap_server.py      # local mailbox + IMAP4rev1 server for testing

@@ -9,16 +9,17 @@ recipe file plus a habit of tagging.
 
 | piece | what it does |
 | --- | --- |
-| `fdroid/nl.enimatek.imapnotesx.yml` | the recipe, to be copied into fdroiddata as `metadata/nl.enimatek.imapnotesx.yml` |
+| `fdroid/nl.enimatek.imapnotesx.yml` | the recipe as submitted to fdroiddata (kept byte-identical to the file there; `rewritemeta` is picky, so never add comments) |
 | `scripts/release.sh` | bumps the version in `AndroidManifest.xml`, builds, commits, tags, pushes |
 | `fastlane/metadata/android/*/` | store listing (title, descriptions, icon, changelogs per versionCode) |
 | `.github/workflows/android-release.yml` | builds a release APK per tag and attaches it to the GitHub release (for people not using F-Droid) |
 
-Everything the buildbot needs is in place: the release keystore is **not**
-required (see `ImapNotesX/build.gradle`, the signing config is only wired up when
-`keystore.jks` exists, otherwise the debug key is used and F-Droid re-signs with
-its own), and the dependency versions are pinned (`FreeDroidWarn:V1.14` — a
-dynamic `V1.+` version breaks F-Droid's reproducible-build checks).
+Everything the buildbot needs is in place: local builds work without a keystore
+(see `ImapNotesX/build.gradle`, the signing config is only wired up when
+`keystore.jks` exists), while the GitHub workflow signs release APKs from the
+`KEYSTORE_BASE64` secret, which the recipe's reproducible-build setup relies on
+(see *Signing and keys*). The dependency versions are pinned (`FreeDroidWarn:V1.14`
+— a dynamic `V1.+` version breaks F-Droid's reproducible-build checks).
 
 ## One-time: get the recipe merged
 
@@ -33,7 +34,7 @@ dynamic `V1.+` version breaks F-Droid's reproducible-build checks).
    git clone git@gitlab.com:<you>/fdroiddata.git && cd fdroiddata
    git checkout -b nl.enimatek.imapnotesx
    cp ~/Developer/ImapNotes3/fdroid/nl.enimatek.imapnotesx.yml metadata/
-   git rev-parse 'v1.5-01^{commit}'   # put this sha into the recipe's `commit:` field
+   git rev-parse 'v1.5-02^{commit}'   # put this sha into the recipe's `commit:` field
    git add metadata/nl.enimatek.imapnotesx.yml
    git commit -m "add nl.enimatek.imapnotesx"
    git push -u origin nl.enimatek.imapnotesx
@@ -54,15 +55,23 @@ registration. There is no APK upload path at all.)
 
 ## Signing and keys
 
-**F-Droid needs no key from you.** It builds from source and signs with its own repository key, so
-the recipe has no `Binaries:` line and no `AllowedAPKSigningKeys`. Nothing has to be configured on
-GitHub for the F-Droid side.
+Since v1.5-02 the recipe enables **reproducible builds**: it has a `Binaries:` line pointing at the
+GitHub release APKs and `AllowedAPKSigningKeys` with our signing-key fingerprint
+(`d6fbc35e…c22d`, the cert in `keystore.jks`). The buildbot compiles from source, compares its
+output with our APK and then publishes *our signed* APK, so the F-Droid APK and the GitHub-release
+APK carry the same signature and can update each other in place.
 
-The workflow only needs secrets if the APK attached to the **GitHub release** should be signed with
-a stable key (`KEYSTORE_BASE64` plus `IMAPNOTES_KEYSTORE_PASSWORD` / `IMAPNOTES_KEY_PASSWORD`).
-Without them every CI run signs with a fresh *debug* key, so those APKs cannot update each other in
-place. Also note that an F-Droid APK and a self-signed APK never update one another (different
-signatures) — pick one channel for daily use.
+That makes the signing setup load-bearing on both sides:
+
+* the GitHub workflow signs release APKs from the `KEYSTORE_BASE64` secret (+ optionally
+  `IMAPNOTES_KEYSTORE_PASSWORD` / `IMAPNOTES_KEY_PASSWORD`); without it every CI run uses a fresh
+  *debug* key and the reproducible-build job fails,
+* `keystore.jks` must be backed up forever — losing the key breaks updates in both channels,
+* changing the key means editing `AllowedAPKSigningKeys` in an fdroiddata MR, and users on the old
+  key cannot update in place.
+
+If reproducible builds were ever abandoned, drop `Binaries:` and `AllowedAPKSigningKeys` and the
+buildbot falls back to signing with F-Droid's own repository key.
 
 ```sh
 # only if you want signed GitHub release APKs — then back keystore.jks up forever
@@ -84,6 +93,11 @@ That is it for F-Droid: the recipe has `AutoUpdateMode: Version` and
 `UpdateCheckMode: Tags ^v[\d.-]+$`, so the buildbot sees the new tag, builds the
 commit it points at and publishes it (typically within hours, sometimes a day).
 
+Until the MR is merged, each new tag also needs the recipe updated by hand: replace
+the single `Builds:` entry (versionName/versionCode/commit) and the two
+`CurrentVersion` lines — only the latest version may be in the recipe before merge.
+Bump the copy in this repo the same way so it stays the reference.
+
 If you want to nudge it along, open a merge request in fdroiddata touching only
 
 ```yaml
@@ -102,6 +116,7 @@ tracks upstream so upstream releases stay comparable:
 ```
 upstream v1.4-07  -> versionCode 10407
 fork     v1.5-01  -> versionCode 10500   (first ImapNotesX release)
+fork     v1.5-02  -> versionCode 10501
 ```
 
 ## Fork-specific notes
@@ -112,12 +127,10 @@ fork     v1.5-01  -> versionCode 10500   (first ImapNotesX release)
   and both read the same notes on the mail server.
 * Notes are not migrated between the two apps automatically — use the app's
   backup/restore or just let the fork sync the mailbox again.
-* Because it is a different package, upstream's
-  `AllowedAPKSigningKeys` entry does not apply and the recipe deliberately has
-  no `Binaries:` line (the buildbot builds from source only).
-* If the buildbot ever reports a JDK too old for the Android Gradle plugin,
-  uncomment the `sudo:` block in the recipe (it installs openjdk-21) and push
-  that to fdroiddata.
+* Because it is a different package, upstream's `AllowedAPKSigningKeys` entry does
+  not apply; the recipe lists *our* key fingerprint instead (see *Signing and keys*).
+* The recipe's `prebuild` deletes the `foojay-resolver` plugin line from
+  `settings.gradle`; the toolchain auto-download conflicts with the build image.
 
 ## Local builds, for comparison
 

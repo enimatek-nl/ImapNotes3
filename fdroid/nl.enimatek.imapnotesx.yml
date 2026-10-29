@@ -1,21 +1,3 @@
-# Draft for fdroid/fdroiddata: metadata/nl.enimatek.imapnotesx.yml
-#
-# How to use:
-#   1. fork gitlab.com/fdroid/fdroiddata, copy this file to
-#      metadata/nl.enimatek.imapnotesx.yml
-#   2. add the *first* Build entry with the commit that carries the tag, then
-#      set CurrentVersion/CurrentVersionCode to that release (see docs/FDROID.md)
-#   3. open the merge request; every later release only needs the two
-#      CurrentVersion lines bumped (the buildbot builds any new tag itself)
-#
-# The GitHub fork was renamed to "ImapNotesX", so the URLs below are final.
-# Releases are tagged on the "main" branch (see AGENTS.md: "Branch layout").
-
-# Modelled on upstream's metadata/de.niendo.ImapNotes3.yml, with the pieces that
-# do not apply to this fork removed: the author's Binaries (F-Droid signs our
-# APKs with its own key, so no AllowedAPKSigningKeys either) and the lint sed
-# prebuild (the lint block is commented out in build.gradle).
-
 Categories:
   - Email
   - Internet
@@ -32,31 +14,21 @@ AutoName: ImapNotesX
 
 RepoType: git
 Repo: https://github.com/enimatek-nl/ImapNotesX.git
+Binaries: 
+  https://github.com/enimatek-nl/ImapNotesX/releases/download/%v/ImapNotesX-%v-release.apk
 
 Builds:
-  - versionName: v1.5-01
-    versionCode: 10500
-    commit: REPLACE_WITH_THE_COMMIT_OF_THE_v1.5-01_TAG
+  - versionName: v1.5-02
+    versionCode: 10501
+    commit: e0456a7f81b37214c9a0eb783ff546d164d5bb07
     subdir: ImapNotesX
     gradle:
       - yes
-    # If the build image's JDK is too old for AGP 9.x, uncomment the sudo block
-    # (this is what upstream used while the image caught up):
-    # sudo:
-    #   - echo "deb https://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list
-    #   - apt-get update
-    #   - apt-get install -y -t trixie openjdk-21-jdk-headless
-    #   - update-alternatives --auto java
+    prebuild: sed -i -e '/foojay/d' ../settings.gradle
+
+AllowedAPKSigningKeys: d6fbc35ed491e0305e87aaa7f4860975db0ed6796e41951add742940bd08c22d
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[\d.-]+$
-
-MaintainerNotes: >
-  The git history carries upstream's tags plus a few v5.x-beta-* ones. The beta/pre
-  tags contain letters, so the UpdateCheckMode regex above does not match them, and the
-  v1.0-08..v1.4-07 tags are all below CurrentVersionCode, so nothing stale is built.
-  Release tags are made on the "main" branch by scripts/release.sh. The fastlane/
-  metadata in the repo provides title, descriptions, changelogs and screenshots, so
-  this recipe deliberately has no Summary/Description.
-CurrentVersion: v1.5-01
-CurrentVersionCode: 10500
+CurrentVersion: v1.5-02
+CurrentVersionCode: 10501
