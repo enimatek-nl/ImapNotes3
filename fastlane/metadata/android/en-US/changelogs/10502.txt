@@ -1,0 +1,4 @@
+* sync: a note just added or updated no longer vanishes from the list until a manual refresh
+* login: a server that never answers now fails after a timeout instead of hanging forever, and a stuck login no longer blocks later ones
+* accessibility: the editor menu entries (Format, Insert, Lists, ...) get their own descriptions instead of all reading "Undo"
+* translations: German and the other nine locales are now complete; "Alle sechs Stunden" typo fixed
