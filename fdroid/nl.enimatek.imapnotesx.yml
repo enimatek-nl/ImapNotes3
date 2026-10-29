@@ -18,9 +18,9 @@ Binaries:
   https://github.com/enimatek-nl/ImapNotesX/releases/download/%v/ImapNotesX-%v-release.apk
 
 Builds:
-  - versionName: v1.5-02
-    versionCode: 10501
-    commit: e0456a7f81b37214c9a0eb783ff546d164d5bb07
+  - versionName: v1.5-03
+    versionCode: 10502
+    commit: 442b2b0536cedddaeb94fc2a7aec59f613414215
     subdir: ImapNotesX
     gradle:
       - yes
@@ -30,5 +30,5 @@ AllowedAPKSigningKeys: d6fbc35ed491e0305e87aaa7f4860975db0ed6796e41951add742940b
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[\d.-]+$
-CurrentVersion: v1.5-02
-CurrentVersionCode: 10501
+CurrentVersion: v1.5-03
+CurrentVersionCode: 10502
