@@ -274,6 +274,32 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
         return false;
     }
 
+    /**
+     * The editor's JS reports typing through its "input" event, but checkbox
+     * toggles, checkbox/table inserts and colour changes mutate the DOM without
+     * firing it (the fork's rich_editor.js has those RE.callback("input") calls
+     * commented out). Watch the editor node with a MutationObserver and reuse
+     * the fork's own event channel, so saveChangesDialog() also sees those edits.
+     */
+    private void enableUnsavedChangesWatcher() {
+        editText.evaluateJavascript(
+                "(function(){"
+                        + "if (window.IN_dirtyObserver || typeof RE === 'undefined') return;"
+                        + "window.IN_dirtyObserver = new MutationObserver(function(ms){"
+                        + "for (var i = 0; i < ms.length; i++) {"
+                        + "var r = ms[i];"
+                        // the Java side re-applies RE.setHeight (a style attribute on the
+                        // editor itself) whenever the keyboard opens/closes; that is not a
+                        // user edit
+                        + "if (r.type === 'attributes' && r.target === RE.editor && r.attributeName === 'style') continue;"
+                        + "RE.callback('input'); break;"
+                        + "}});"
+                        + "window.IN_dirtyObserver.observe(RE.editor, "
+                        + "{childList:true, subtree:true, characterData:true, attributes:true});"
+                        + "})();",
+                null);
+    }
+
     private void SetupRichEditor() {
         editText.setEditorBackgroundColor(0); // otherwise it will not work in dark mode
         editText.setPadding(10, 10, 10, 10);
@@ -291,6 +317,7 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
 
         editText.setOnInitialLoadListener(ready -> {
             editText.setEditorHeight(editText.getHeight());
+            if (ready) enableUnsavedChangesWatcher();
         });
 
         editText.setOnClickListener((RichEditor.onClickListener) text -> {
@@ -689,6 +716,14 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
     public void onNothingSelected(AdapterView<?> parent) {
     }
 
+    // The note-background colour radios only change the Java-side view colour and the
+    // bgColor field; they never touch the editor DOM, so mark the change explicitly.
+    private void SetNoteColor(String color) {
+        bgColor = color;
+        textChanged = true;
+        ResetColors();
+    }
+
     // realColor is misnamed.  It is the ID of the radio button widget that chooses the background
     // colour.
     private void ResetColors() {
@@ -794,53 +829,43 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
                 return true;
             case R.id.none:
                 item.setChecked(true);
-                bgColor = "none";
-                ResetColors();
+                SetNoteColor("none");
                 return true;
             case R.id.blue:
                 item.setChecked(true);
-                bgColor = "blue";
-                ResetColors();
+                SetNoteColor("blue");
                 return true;
             case R.id.white:
                 item.setChecked(true);
-                bgColor = "white";
-                ResetColors();
+                SetNoteColor("white");
                 return true;
             case R.id.gray:
                 item.setChecked(true);
-                bgColor = "gray";
-                ResetColors();
+                SetNoteColor("gray");
                 return true;
             case R.id.black:
                 item.setChecked(true);
-                bgColor = "black";
-                ResetColors();
+                SetNoteColor("black");
                 return true;
             case R.id.yellow:
                 item.setChecked(true);
-                bgColor = "yellow";
-                ResetColors();
+                SetNoteColor("yellow");
                 return true;
             case R.id.pink:
                 item.setChecked(true);
-                bgColor = "pink";
-                ResetColors();
+                SetNoteColor("pink");
                 return true;
             case R.id.green:
                 item.setChecked(true);
-                bgColor = "green";
-                ResetColors();
+                SetNoteColor("green");
                 return true;
             case R.id.brown:
                 item.setChecked(true);
-                bgColor = "brown";
-                ResetColors();
+                SetNoteColor("brown");
                 return true;
             case R.id.red:
                 item.setChecked(true);
-                bgColor = "red";
-                ResetColors();
+                SetNoteColor("red");
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
