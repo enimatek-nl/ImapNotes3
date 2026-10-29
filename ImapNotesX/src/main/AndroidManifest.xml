@@ -94,7 +94,7 @@
             <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="de.niendo.ImapNotes3.AccountListActivity" />
+                android:value="nl.enimatek.imapnotesx.AccountListActivity" />
         </activity>
         <activity
             android:name=".NoteDetailActivity"
@@ -104,7 +104,7 @@
             <!-- What is this meta-data for?  There doesn't seem to be any code that uses it -->
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="de.niendo.ImapNotes3.ListActivity" />
+                android:value="nl.enimatek.imapnotesx.ListActivity" />
         </activity>
 
         <service

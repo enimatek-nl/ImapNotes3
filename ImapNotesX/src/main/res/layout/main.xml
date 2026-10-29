@@ -30,7 +30,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <de.niendo.ImapNotes3.Miscs.SwipeRevealListView
+        <nl.enimatek.imapnotesx.Miscs.SwipeRevealListView
             android:id="@+id/notesList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

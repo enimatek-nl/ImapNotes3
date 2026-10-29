@@ -13,7 +13,7 @@ import sys
 import time
 
 PKG = "nl.enimatek.imapnotesx"
-ACTIVITY = "de.niendo.ImapNotes3.AccountListActivity"
+ACTIVITY = "nl.enimatek.imapnotesx.AccountListActivity"
 APK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                    "ImapNotesX", "build", "outputs", "apk", "debug",
                    "ImapNotesX-v1.5-01-debug.apk")

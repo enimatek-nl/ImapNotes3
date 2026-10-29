@@ -43,7 +43,7 @@ no new errors (see _Baseline_). Kept here as a record of what was removed.
 
 - [x] `Sync/Security.java` deleted — 53-line enum, **zero references**. Both users in that package
       import the live one: `Sync/SyncUtils.java` and `Sync/SyncAdapter.java` import
-      `de.niendo.ImapNotes3.Data.Security`.
+      `nl.enimatek.imapnotesx.Data.Security`.
 
 ### 1.2 Dead methods and fields
 
@@ -306,7 +306,7 @@ cleanup, which is a judgement call and stays open.
 - [ ] **`AsyncTask` migration**: `UpdateThread`, `SyncThread`, `LoginThread` — deprecated since
       Android 11 but pervasive. Only worth touching when one of them changes anyway.
 - [ ] `AndroidManifest.xml:122` `TODO: What is StubProvider for?` — answer: the sync adapter needs a
-      content authority (`de.niendo.ImapNotes3.provider`), so `Sync/StubProvider` is required.
+      content authority (`nl.enimatek.imapnotesx.provider`), so `Sync/StubProvider` is required.
       Replace the TODO with that sentence rather than deleting the provider.
 - [ ] **`AccountConfigurationActivity` base class.** It extends `AccountAuthenticatorActivity` and
       re-implements what `AppCompatActivity` does by hand (about 15 `getDelegate()` calls:

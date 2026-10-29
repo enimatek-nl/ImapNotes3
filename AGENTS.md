@@ -13,9 +13,9 @@ This makes notes interoperable with Apple devices and the "iOS IMAP Notes" Thund
 Fork lineage: `imapnote` → `nbenm/ImapNote2` → `kwhitefoot/ImapNote2` → `niendo1/ImapNotes3` →
 **ImapNotesX** (this repo, https://github.com/enimatek-nl/ImapNotesX). ImapNotesX is a community
 fork with its own identity: applicationId **`nl.enimatek.imapnotesx`** (F-Droid id), own name
-(`R.string.app_name`) and own logo — but the Java package / Gradle `namespace` are still
-`de.niendo.ImapNotes3`, so **do not** mass-rename packages, layout class tags or
-`parentActivityName` values. The fork installs side by side with upstream, and the IMAP wire
+(`R.string.app_name`) and own logo; the Java package / Gradle `namespace` were renamed to
+match the applicationId as `nl.enimatek.imapnotesx` (upstream keeps `de.niendo.ImapNotes3`
+there — never mass-rename packages on the `upstream-pr` branch). The fork installs side by side with upstream, and the IMAP wire
 format (and therefore the mailbox content) is identical. Translations live in `res/values-*/strings.xml` and are **maintained directly in this repo** — edit the locale files by hand; base `res/values/strings.xml` is the canonical key set. (Upstream historically used hosted.weblate.org, which is how most existing translations arrived, but this fork no longer depends on it.)
 
 Since the `v1.4-07` line the app uses an **account-first navigation** ("iOS Notes style"):
@@ -27,7 +27,7 @@ there is **no "all accounts" screen any more**. See [Screen & navigation archite
 - **Language: Java only** (~9,300 LOC, 33 files). No Kotlin. `compileOptions` = Java 17.
 - Single Gradle module `:ImapNotesX` (`settings.gradle`), old Groovy DSL (`build.gradle`).
 - **Gradle wrapper 9.7**, **AGP 9.3.1**, `foojay-resolver-convention` plugin (auto-downloads JDK toolchain).
-- `compileSdk 37`, `targetSdk 35`, `minSdk 25`, namespace `de.niendo.ImapNotes3`,
+- `compileSdk 37`, `targetSdk 35`, `minSdk 25`, namespace `nl.enimatek.imapnotesx`,
   applicationId `nl.enimatek.imapnotesx`.
 - **`versionCode` / `versionName` live in `AndroidManifest.xml`** (root `<manifest>` attrs), not in `build.gradle` (currently `10500` / `v1.5-01`).
 - UI stack: `androidx.appcompat` 1.8.0 + Material 1.14.0 (`ImapNotesTheme`, light/dark via `values-night`), `swiperefreshlayout` 1.2.0, `androidx.preference` 1.2.1.
@@ -111,7 +111,7 @@ AccountListActivity  (LAUNCHER + all share intent filters, singleTop, exported)
   on Android 16). Anti-spoofing rule kept: changed server + empty password →
   `R.string.imap_server_changed_new_password`, stay on the form.
 
-## Package map (`de.niendo.ImapNotes3` — Java packages keep the upstream name)
+## Package map (`nl.enimatek.imapnotesx`)
 
 | Package / class                                     | Role                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

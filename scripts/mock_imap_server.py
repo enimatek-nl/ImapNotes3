@@ -94,6 +94,12 @@ class Message:
         # included), so keep an unparsed copy for it
         self.wire = email.message_from_bytes(raw)
         if internaldate:
+            # restored from the JSON state file it is a string again; every user
+            # below expects a datetime, so parse it back
+            if isinstance(internaldate, str):
+                from datetime import datetime
+
+                internaldate = datetime.strptime(internaldate, "%d-%b-%Y %H:%M:%S %z")
             self.internaldate = internaldate
         else:
             try:
@@ -127,11 +133,18 @@ class Message:
         if spec == "HEADER":
             return self.headers()
         if spec.startswith("HEADER.FIELDS"):
-            names = spec[spec.index("(") + 1: spec.index(")")].split()
+            names = spec[spec.index("(") + 1 : spec.index(")")].split()
             return self.header_fields(names)
         if spec.startswith("HEADER.FIELDS.NOT"):
-            keep = [n for n in self.parsed.keys() if n.lower() not in
-                    [x.lower() for x in spec[spec.index("(") + 1: spec.index(")")].split()]]
+            keep = [
+                n
+                for n in self.parsed.keys()
+                if n.lower()
+                not in [
+                    x.lower()
+                    for x in spec[spec.index("(") + 1 : spec.index(")")].split()
+                ]
+            ]
             return self.header_fields(keep)
         if spec == "TEXT":
             return self.body()
@@ -142,6 +155,7 @@ class Message:
 
 def datetime_now():
     from datetime import datetime
+
     return datetime.now().astimezone()
 
 
@@ -193,9 +207,14 @@ class Store:
                 mailbox = Mailbox(name, box["uidvalidity"])
                 mailbox.next_uid = box["next_uid"]
                 for entry in box["messages"]:
-                    mailbox.messages.append(Message(
-                        base64.b64decode(entry["raw"]), entry["uid"], entry["flags"],
-                        entry.get("internaldate")))
+                    mailbox.messages.append(
+                        Message(
+                            base64.b64decode(entry["raw"]),
+                            entry["uid"],
+                            entry["flags"],
+                            entry.get("internaldate"),
+                        )
+                    )
                 self.mailboxes[name] = mailbox
             return
         if self.maildir and os.path.isdir(self.maildir):
@@ -205,7 +224,7 @@ class Store:
             for name in eml:
                 with open(os.path.join(self.maildir, name), "rb") as handle:
                     raw = handle.read()
-                if raw.startswith(b"From "):          # "From " mbox glue, not IMAP
+                if raw.startswith(b"From "):  # "From " mbox glue, not IMAP
                     raw = raw.split(CRLF, 1)[1]
                 # the store always uses CRLF; the seed files may use LF or CRLF
                 box.add(raw.replace(b"\r\n", b"\n").replace(b"\n", CRLF))
@@ -219,9 +238,15 @@ class Store:
             data["mailboxes"][name] = {
                 "uidvalidity": box.uidvalidity,
                 "next_uid": box.next_uid,
-                "messages": [{"uid": m.uid, "flags": sorted(m.flags),
-                              "internaldate": m.internaldate.strftime("%d-%b-%Y %H:%M:%S %z"),
-                              "raw": base64.b64encode(m.raw).decode()} for m in box.messages],
+                "messages": [
+                    {
+                        "uid": m.uid,
+                        "flags": sorted(m.flags),
+                        "internaldate": m.internaldate.strftime("%d-%b-%Y %H:%M:%S %z"),
+                        "raw": base64.b64encode(m.raw).decode(),
+                    }
+                    for m in box.messages
+                ],
             }
         tmp = self.state_path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as handle:
@@ -254,8 +279,14 @@ class Session(threading.Thread):
     # ---------------------------------------------------------------- plumbing
     def log(self, *args):
         if self.opts.verbose:
-            print("[%s] %s" % (self.addr[0] + ":" + str(self.addr[1]), " ".join(str(a) for a in args)),
-                  flush=True)
+            print(
+                "[%s] %s"
+                % (
+                    self.addr[0] + ":" + str(self.addr[1]),
+                    " ".join(str(a) for a in args),
+                ),
+                flush=True,
+            )
 
     def send(self, data):
         if isinstance(data, str):
@@ -269,7 +300,9 @@ class Session(threading.Thread):
         # always spell out a reason phrase: strict clients (imaplib) do not accept
         # a bare "tag OK" completion line
         code = (" " + code.decode()) if code else ""
-        self.send((tag + " " + kind + code + " " + (text or "completed")).encode() + CRLF)
+        self.send(
+            (tag + " " + kind + code + " " + (text or "completed")).encode() + CRLF
+        )
 
     def read_line(self):
         global_end = None
@@ -315,9 +348,10 @@ class Session(threading.Thread):
                 handler(tag, args)
         except (ConnectionResetError, BrokenPipeError, TimeoutError):
             pass
-        except Exception as exc:                                   # keep the dev loop alive
+        except Exception as exc:  # keep the dev loop alive
             self.log("!! server error:", repr(exc))
             import traceback
+
             traceback.print_exc()
         finally:
             self.sock.close()
@@ -329,7 +363,7 @@ class Session(threading.Thread):
         self.done(tag)
 
     def cmd_id(self, tag, args):
-        self.untagged('ID (NIL NIL)')
+        self.untagged("ID (NIL NIL)")
         self.done(tag)
 
     def cmd_noop(self, tag, args):
@@ -359,9 +393,13 @@ class Session(threading.Thread):
         wanted = (pattern or "*").strip('"')
         for name in self.store.names():
             if wanted != "*" and wanted != name:
-                if not wanted.startswith(name) and not name.startswith(wanted.rstrip("%*")):
+                if not wanted.startswith(name) and not name.startswith(
+                    wanted.rstrip("%*")
+                ):
                     continue
-            self.untagged('LIST (\\HasNoChildren) "%s" "%s"' % (self.store.separator, name))
+            self.untagged(
+                'LIST (\\HasNoChildren) "%s" "%s"' % (self.store.separator, name)
+            )
         self.done(tag)
 
     def cmd_lsub(self, tag, args):
@@ -383,7 +421,10 @@ class Session(threading.Thread):
             if item == "MESSAGES":
                 out.append("MESSAGES %d" % len(box.messages))
             elif item == "UNSEEN":
-                out.append("UNSEEN %d" % len([m for m in box.messages if "\\Seen" not in m.flags]))
+                out.append(
+                    "UNSEEN %d"
+                    % len([m for m in box.messages if "\\Seen" not in m.flags])
+                )
             elif item == "UIDNEXT":
                 out.append("UIDNEXT %d" % box.uidnext())
             elif item == "UIDVALIDITY":
@@ -400,10 +441,18 @@ class Session(threading.Thread):
         self.untagged("0 RECENT")
         self.untagged("OK [UIDVALIDITY %d]" % box.uidvalidity)
         self.untagged("OK [UIDNEXT %d]" % box.uidnext())
-        self.untagged('FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)')
-        self.untagged('OK [PERMANENTFLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft \\*)]')
-        self.untagged('OK [UNSEEN %d]' % len([m for m in box.messages if "\\Seen" not in m.flags]))
-        self.done(tag, code=b"[READ-ONLY]" if readonly else b"[READ-WRITE]", text="Select completed")
+        self.untagged("FLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft)")
+        self.untagged(
+            "OK [PERMANENTFLAGS (\\Answered \\Flagged \\Deleted \\Seen \\Draft \\*)]"
+        )
+        self.untagged(
+            "OK [UNSEEN %d]" % len([m for m in box.messages if "\\Seen" not in m.flags])
+        )
+        self.done(
+            tag,
+            code=b"[READ-ONLY]" if readonly else b"[READ-WRITE]",
+            text="Select completed",
+        )
 
     def cmd_examine(self, tag, args):
         self.cmd_select(tag, args, readonly=True)
@@ -432,7 +481,9 @@ class Session(threading.Thread):
         self.done(tag)
 
     def cmd_uid(self, tag, args):
-        sub, rest = args.split(None, 1) if len(args.split(None, 1)) > 1 else (args.upper(), "")
+        sub, rest = (
+            args.split(None, 1) if len(args.split(None, 1)) > 1 else (args.upper(), "")
+        )
         sub = sub.upper()
         if sub == "SEARCH":
             self.cmd_search(tag, rest, by_uid=True)
@@ -478,8 +529,11 @@ class Session(threading.Thread):
         wanted = parse_items(items)
         requested = parse_set(setpart)
         star = self.star_uid() if by_uid else len(box.messages)
-        hits = [(index, msg) for index, msg in enumerate(box.messages, start=1)
-                if requested.contains(msg.uid if by_uid else index, star)]
+        hits = [
+            (index, msg)
+            for index, msg in enumerate(box.messages, start=1)
+            if requested.contains(msg.uid if by_uid else index, star)
+        ]
         peek = any(i[0] == "BODY.PEEK" for i in wanted)
         mark_seen = not peek and any(i[0].startswith("BODY") for i in wanted)
         for index, msg in hits:
@@ -490,8 +544,11 @@ class Session(threading.Thread):
                 elif item == "FLAGS":
                     parts.append("FLAGS (" + " ".join(sorted(msg.flags)) + ")")
                 elif item == "INTERNALDATE":
-                    parts.append('INTERNALDATE "' +
-                                 msg.internaldate.strftime("%d-%b-%Y %H:%M:%S %z") + '"')
+                    parts.append(
+                        'INTERNALDATE "'
+                        + msg.internaldate.strftime("%d-%b-%Y %H:%M:%S %z")
+                        + '"'
+                    )
                 elif item == "RFC822.SIZE":
                     parts.append("RFC822.SIZE %d" % len(msg.raw))
                 elif item == "ENVELOPE":
@@ -503,11 +560,20 @@ class Session(threading.Thread):
                     data = msg.section(spec)
                     if rng:
                         start, count = rng
-                        data = data[start:start + count] if count else data[start:]
+                        data = data[start : start + count] if count else data[start:]
                     if mark_seen:
                         msg.flags.add("\\Seen")
-                    parts.append(("BODY%s " % ("[" + spec + "]" + fmt_range(rng) if rng else
-                                               "[" + spec + "]")).encode() + imap_str(data.decode("latin-1")))
+                    parts.append(
+                        (
+                            "BODY%s "
+                            % (
+                                "[" + spec + "]" + fmt_range(rng)
+                                if rng
+                                else "[" + spec + "]"
+                            )
+                        ).encode()
+                        + imap_str(data.decode("latin-1"))
+                    )
             joined = b" ".join(p if isinstance(p, bytes) else p.encode() for p in parts)
             self.untagged(("%d FETCH (" % index).encode() + joined + b")")
         self.done(tag, text="Fetch completed")
@@ -521,10 +587,15 @@ class Session(threading.Thread):
         if rest.startswith("."):
             silent, rest = True, rest[1:]
         action = "+FLAGS"
-        if rest.upper().startswith("+FLAGS") or rest.upper().startswith("-FLAGS") \
-                or rest.upper().startswith("FLAGS"):
-            action, rest = rest.split(None, 1)[0], rest.split(None, 1)[1] if len(
-                rest.split(None, 1)) > 1 else rest
+        if (
+            rest.upper().startswith("+FLAGS")
+            or rest.upper().startswith("-FLAGS")
+            or rest.upper().startswith("FLAGS")
+        ):
+            action, rest = (
+                rest.split(None, 1)[0],
+                rest.split(None, 1)[1] if len(rest.split(None, 1)) > 1 else rest,
+            )
         requested = parse_set(setpart)
         star = self.star_uid() if by_uid else len(box.messages)
         new_flags = set(f for f in rest.strip("()").split())
@@ -541,7 +612,9 @@ class Session(threading.Thread):
             else:
                 msg.flags = {f for f in msg.flags if f in ("\\Recent",)} | new_flags
             if not silent:
-                self.untagged('%d FETCH (FLAGS (%s))' % (index, " ".join(sorted(msg.flags))))
+                self.untagged(
+                    "%d FETCH (FLAGS (%s))" % (index, " ".join(sorted(msg.flags)))
+                )
         self.store.save()
         self.done(tag, text="Store completed")
 
@@ -564,16 +637,21 @@ class Session(threading.Thread):
         name, rest = arg_pair(args)
         box = self.store.get(name)
         flags, date, literal = parse_append_args(rest)
-        size_text = rest[rest.rindex("{") + 1: rest.rindex("}")]
-        literal_plus = size_text.endswith("+")            # LITERAL+: bytes follow right away
+        size_text = rest[rest.rindex("{") + 1 : rest.rindex("}")]
+        literal_plus = size_text.endswith("+")  # LITERAL+: bytes follow right away
         size = int(size_text.rstrip("+"))
         if not literal_plus:
             self.send(b"+ " + CRLF)
         literal = self.read_bytes(size)
         box.add(literal, flags=flags)
         self.store.save()
-        self.done(tag, code=("[APPENDUID %d %d]" % (box.uidvalidity, box.messages[-1].uid)).encode(),
-                  text="Append completed")
+        self.done(
+            tag,
+            code=(
+                "[APPENDUID %d %d]" % (box.uidvalidity, box.messages[-1].uid)
+            ).encode(),
+            text="Append completed",
+        )
 
     def cmd_copy(self, tag, args, by_uid=False):
         box = self.ensure(tag)
@@ -588,7 +666,9 @@ class Session(threading.Thread):
             if requested.contains(key, star):
                 target.add(msg.raw, flags=set(msg.flags))
         self.store.save()
-        self.done(tag, code=b"[COPYUID %d 0 0]" % target.uidvalidity, text="Copy completed")
+        self.done(
+            tag, code=b"[COPYUID %d 0 0]" % target.uidvalidity, text="Copy completed"
+        )
 
     def cmd_move(self, tag, args, by_uid=False):
         self.cmd_copy(tag, args, by_uid)
@@ -600,7 +680,7 @@ class Session(threading.Thread):
 
     def cmd_getquotaroot(self, tag, args):
         self.untagged('QUOTAROOT "%s" ""' % unquote(args))
-        self.untagged("QUOTA "" (STORAGE 0 999999)")
+        self.untagged("QUOTA  (STORAGE 0 999999)")
         self.done(tag)
 
     def cmd_idle(self, tag, args):
@@ -642,10 +722,10 @@ def _first_arg(text):
         return "", ""
     if text.startswith('"'):
         end = text.index('"', 1)
-        return text[1:end], text[end + 1:].strip()
+        return text[1:end], text[end + 1 :].strip()
     if text.startswith("("):
         end = text.index(")")
-        return text[:end + 1], text[end + 1:].strip()
+        return text[: end + 1], text[end + 1 :].strip()
     parts = text.split(None, 1)
     return parts[0], (parts[1] if len(parts) > 1 else "")
 
@@ -662,7 +742,7 @@ def split_paren(args):
     if args.startswith("("):
         end = args.index(")")
         first = args[1:end].strip()
-        rest = args[end + 1:].strip()
+        rest = args[end + 1 :].strip()
         # rest looks like "UID FLAGS)" because the opener was the item list start
         return first, "(" + rest
     first, rest = args.split(None, 1)
@@ -690,12 +770,12 @@ def parse_items(items):
                 elif items[end] == "]":
                     depth -= 1
                 end += 1
-            spec = items[pos + 1:end - 1]
+            spec = items[pos + 1 : end - 1]
             pos = end
             rng = None
             if pos < len(items) and items[pos] == "<":
                 close = items.index(">", pos)
-                body = items[pos + 1:close]
+                body = items[pos + 1 : close]
                 if "." in body:
                     a, b = body.split(".", 1)
                     rng = (int(a), int(b) if b else 0)
@@ -720,8 +800,15 @@ def envelope(msg):
         for value in values:
             for name, address in address_pairs(value):
                 mailbox, _, host = address.partition("@")
-                out += (b"(" + imap_quoted(name or None) + b" NIL " + imap_quoted(mailbox) +
-                        b" " + imap_quoted(host or None) + b")")
+                out += (
+                    b"("
+                    + imap_quoted(name or None)
+                    + b" NIL "
+                    + imap_quoted(mailbox)
+                    + b" "
+                    + imap_quoted(host or None)
+                    + b")"
+                )
         return out + b")"
 
     def head(header):
@@ -729,7 +816,10 @@ def envelope(msg):
         return imap_quoted(str(value)) if value else b"NIL"
 
     parts = [
-        imap_quoted(msg.wire.get("Date") or msg.internaldate.strftime("%a, %d %b %Y %H:%M:%S %z")),
+        imap_quoted(
+            msg.wire.get("Date")
+            or msg.internaldate.strftime("%a, %d %b %Y %H:%M:%S %z")
+        ),
         head("Subject"),
         addrs("From"),
         addrs("Sender") if msg.parsed.get("Sender") else addrs("From"),
@@ -766,8 +856,17 @@ def bodystructure(msg):
     maintype, subtype = ctype.split("/", 1)
     body = msg.body()
     lines = str(body.count(b"\n")).encode()
-    return (b'("' + maintype.upper().encode() + b'" "' + subtype.upper().encode() +
-            b'" NIL NIL NIL "8BIT" ' + str(len(body)).encode() + b" " + lines + b")")
+    return (
+        b'("'
+        + maintype.upper().encode()
+        + b'" "'
+        + subtype.upper().encode()
+        + b'" NIL NIL NIL "8BIT" '
+        + str(len(body)).encode()
+        + b" "
+        + lines
+        + b")"
+    )
 
 
 def parse_append_args(rest):
@@ -776,13 +875,13 @@ def parse_append_args(rest):
     if rest.startswith("("):
         end = rest.index(")")
         flags = rest[1:end].split()
-        rest = rest[end + 1:].strip()
+        rest = rest[end + 1 :].strip()
     if rest.startswith('"'):
         end = rest.index('"', 1)
         date = rest[1:end]
-        rest = rest[end + 1:].strip()
+        rest = rest[end + 1 :].strip()
     if rest.endswith("}"):
-        literal = None                     # caller asks first, then reads the literal
+        literal = None  # caller asks first, then reads the literal
     return flags, date, literal
 
 
@@ -794,21 +893,36 @@ class Server(socketserver.ThreadingTCPServer):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--port", type=int, default=1143)
-    parser.add_argument("--host", default="127.0.0.1",
-                        help="127.0.0.1 is enough: the emulator reaches the host via 10.0.2.2")
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="127.0.0.1 is enough: the emulator reaches the host via 10.0.2.2",
+    )
     parser.add_argument("--user", default="notes")
     parser.add_argument("--password", default="notes")
-    parser.add_argument("--maildir", default=os.path.join(os.path.dirname(__file__), "..",
-                                                         "dev", "mock_mailbox"))
-    parser.add_argument("--state", default="", help="JSON state file (default: in memory)")
+    parser.add_argument(
+        "--maildir",
+        default=os.path.join(os.path.dirname(__file__), "..", "dev", "mock_mailbox"),
+    )
+    parser.add_argument(
+        "--state", default="", help="JSON state file (default: in memory)"
+    )
     parser.add_argument("--quiet", action="store_true")
     options = parser.parse_args()
 
     store = Store(os.path.abspath(options.maildir), options.state)
     options.verbose = not options.quiet
-    print("mock IMAP on %s:%d  user=%s password=%s  mailboxes=%s  messages=%s" % (
-        options.host, options.port, options.user, options.password, store.names(),
-        {n: len(b.messages) for n, b in store.mailboxes.items()}))
+    print(
+        "mock IMAP on %s:%d  user=%s password=%s  mailboxes=%s  messages=%s"
+        % (
+            options.host,
+            options.port,
+            options.user,
+            options.password,
+            store.names(),
+            {n: len(b.messages) for n, b in store.mailboxes.items()},
+        )
+    )
 
     class ClientHandler(socketserver.BaseRequestHandler):
         def handle(self):

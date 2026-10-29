@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <de.niendo.ImapNotes3.Miscs.SwipeRevealListView
+    <nl.enimatek.imapnotesx.Miscs.SwipeRevealListView
         android:id="@+id/accountList"
         android:layout_width="match_parent"
         android:layout_height="0dp"

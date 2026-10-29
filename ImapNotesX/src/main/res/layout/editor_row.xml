@@ -20,7 +20,7 @@
         android:contentDescription="@string/undo"
         android:src="@drawable/undo" />
 
-    <de.niendo.ImapNotes3.Miscs.NDSpinner
+    <nl.enimatek.imapnotesx.Miscs.NDSpinner
         android:id="@+id/row_spinner_dummy"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
