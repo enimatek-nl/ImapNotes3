@@ -283,6 +283,8 @@ public class NotesDb extends SQLiteOpenHelper {
                         date = Utilities.internalDateFormat.parse(resultPointer.getString(dateIndex));
                     } catch (ParseException e) {
                         Log.w(TAG, "GetStoredNotes: Parsing data from database failed: ", e);
+                        // Without this the row would display the date of the row before it.
+                        date = null;
                     }
                     //DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(this.ctx);
                     //String sdate = dateFormat.format(date);

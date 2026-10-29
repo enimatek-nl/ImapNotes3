@@ -11,21 +11,21 @@
     android:orientation="horizontal"
     android:padding="5dp">
 
+    <!-- The icon and its content description are set by Miscs/EditorMenuAdapter: the entries of
+         these popups are icons without a label, so the description is their only accessible name.
+         (tools:ignore for the ContentDescription lint check.) -->
     <ImageView
         android:id="@+id/row_icon_dummy"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="5dp"
         android:scaleType="center"
-        android:contentDescription="@string/undo"
-        android:src="@drawable/undo" />
+        tools:ignore="ContentDescription" />
 
     <nl.enimatek.imapnotesx.Miscs.NDSpinner
         android:id="@+id/row_spinner_dummy"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@color/EditorMenuBgColor"
-        android:contentDescription="@string/bg_color"
-        android:title="@string/bg_color"
         android:visibility="invisible" />
 </LinearLayout>

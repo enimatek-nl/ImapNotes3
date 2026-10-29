@@ -54,8 +54,10 @@ import com.sun.mail.imap.AppendUID;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import javax.mail.Flags;
 import javax.mail.IllegalWriteException;
@@ -147,7 +149,8 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
 
         // Send new local messages to remote, move them to local folder
         // and update uids in database
-        boolean isChanged = handleNewNotes();
+        Set<String> justUploaded = handleNewNotes();
+        boolean isChanged = !justUploaded.isEmpty();
         stageTime = StageTime("handleNewNotes", stageTime);
 
         // Delete on remote messages that are deleted locally (if necessary)
@@ -158,7 +161,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
         boolean remoteNotesManaged = false;
         try {
             remoteNotesManaged = syncUtils.handleRemoteNotes(account.GetRootDirAccount(),
-                    storedNotes, accountArg.name);
+                    storedNotes, accountArg.name, justUploaded);
         } catch (MessagingException | IOException e) {
             RememberError("onPerformSync handleRemoteNotes failed", e);
         }
@@ -280,10 +283,14 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
     }
 
-    private boolean handleNewNotes() {
+    private @NonNull Set<String> handleNewNotes() {
         Log.d(TAG, "handleNewNotes");
         //Message message = null;
-        boolean newNotesManaged = false;
+        // The uids the server assigned to notes uploaded during this sync.  handleRemoteNotes
+        // must never treat them as "removed on the server": the APPENDUID response is proof
+        // that they exist there, even if the folder listing on the same connection is stale
+        // (a server that skipped the untagged EXISTS for its own APPEND).
+        Set<String> uploadedUids = new HashSet<>();
         File accountDir = account.GetRootDirAccount();
         File dirNew = new File(accountDir, "new");
         Log.d(TAG, "dn path: " + dirNew.getAbsolutePath());
@@ -293,7 +300,6 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
         for (String fileNew : Objects.requireNonNull(listOfNew)) {
             String suidFileNew = Utilities.removeMailExt(fileNew);
             Log.d(TAG, "New Note to process:" + fileNew);
-            newNotesManaged = true;
             // Read local new message from file
             File fileInNew = new File(dirNew, fileNew);
             storedNotes.SetSaveState("-" + suidFileNew, OneNote.SAVE_STATE_SYNCING, account.accountName);
@@ -322,6 +328,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
             // Update uid in database entry
             String newuid = Long.toString(uids[0].uid);
             Log.d(TAG, "handleNewNotes uid: " + newuid);
+            uploadedUids.add(newuid);
 
             File to = new File(accountDir, Utilities.addMailExt(newuid));
             if (fileInNew.renameTo(to)) {
@@ -332,7 +339,7 @@ class SyncAdapter extends AbstractThreadedSyncAdapter {
                 storedNotes.SetSaveState(newuid, OneNote.SAVE_STATE_OK, account.accountName);
             }
         }
-        return newNotesManaged;
+        return uploadedUids;
     }
 
     /**

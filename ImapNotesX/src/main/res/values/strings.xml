@@ -68,6 +68,63 @@
     <string name="bg_color">Background Color</string>
     <string name="alignment">Alignment</string>
     <string name="insert">insert</string>
+    <!-- Accessible names of the entries in the editor menu popups: they are icons without a
+         label, see Miscs/EditorMenuAdapter and layout/editor_row.xml. -->
+    <string name="remove_format">Remove Formatting</string>
+    <string name="bold">Bold</string>
+    <string name="italic">Italic</string>
+    <string name="subscript">Subscript</string>
+    <string name="superscript">Superscript</string>
+    <string name="strikethrough">Strikethrough</string>
+    <string name="underline">Underline</string>
+    <string name="font_size">Font Size</string>
+    <string name="font_family">Font Family</string>
+    <string name="bullets">Bulleted List</string>
+    <string name="numbers">Numbered List</string>
+    <string name="heading1">Heading 1</string>
+    <string name="heading2">Heading 2</string>
+    <string name="heading3">Heading 3</string>
+    <string name="heading4">Heading 4</string>
+    <string name="heading5">Heading 5</string>
+    <string name="heading6">Heading 6</string>
+    <string name="font_size_1">Size 1</string>
+    <string name="font_size_2">Size 2</string>
+    <string name="font_size_3">Size 3</string>
+    <string name="font_size_4">Size 4</string>
+    <string name="font_size_5">Size 5</string>
+    <string name="font_size_6">Size 6</string>
+    <string name="font_size_7">Size 7</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_sansserif">Sans Serif</string>
+    <string name="font_cursive">Cursive</string>
+    <string name="font_monospace">Monospace</string>
+    <string name="font_fantasy">Fantasy</string>
+    <string name="indent">Increase Indent</string>
+    <string name="outdent">Decrease Indent</string>
+    <string name="align_left">Align Left</string>
+    <string name="align_center">Align Center</string>
+    <string name="align_right">Align Right</string>
+    <string name="blockquote">Blockquote</string>
+    <string name="pre_formatted">Preformatted Text</string>
+    <string name="code_html">Insert HTML Code</string>
+    <string name="code_off_html">Insert As Plain Text</string>
+    <string name="checkbox">Checkbox</string>
+    <string name="image">Image</string>
+    <string name="audio_stream">Audio Stream</string>
+    <string name="video">Video</string>
+    <string name="youtube_video">YouTube Video</string>
+    <string name="link">Link</string>
+    <string name="star_symbol">Star</string>
+    <string name="exclamation_symbol">Exclamation Mark</string>
+    <string name="question_symbol">Question Mark</string>
+    <string name="horizontal_line">Horizontal Line</string>
+    <string name="date_time">Date and Time</string>
+    <string name="hashtag">Hashtag</string>
+    <string name="insert_table">Insert Table</string>
+    <string name="insert_column">Insert Column</string>
+    <string name="insert_row">Insert Row</string>
+    <string name="delete_column">Delete Column</string>
+    <string name="delete_row">Delete Row</string>
     <string name="note_last_change">Last Change</string>
     <string name="sync_wait_necessary">please wait until sync is complete.</string>
     <string name="save_wait_necessary">please wait until save is complete.</string>
@@ -204,5 +261,7 @@
     <string name="catalan">Catalan</string>
     <string name="save_note_failed">saving the note failed for unknown reasons</string>
     <string name="Ukrainian">Ukrainian</string>
-    <string name="OAUTH2">OAuth2/XOAuth2</string>
+    <!-- Not translated on purpose: a protocol name, and the OAUTH2 entry in
+         Security is still commented out. -->
+    <string name="OAUTH2" translatable="false">OAuth2/XOAuth2</string>
 </resources>

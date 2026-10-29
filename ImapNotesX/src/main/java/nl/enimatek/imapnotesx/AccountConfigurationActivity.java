@@ -29,6 +29,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -167,6 +168,13 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
   */
     //@Override
     public void onFinishPerformed(@NonNull Result<String> result) {
+        if (isFinishing()) {
+            // The connection check can now finish on its own after a socket timeout, possibly after
+            // the user already left this screen with Back. The account was written (or not) in the
+            // thread; there is no screen left to update.
+            Log.d(TAG, "onFinishPerformed after the screen was left: " + result.result);
+            return;
+        }
         if (result.succeeded) {
             Intent intent = new Intent();
             intent.putExtra(ListActivity.EDIT_ITEM_ACCOUNTNAME, GetTextViewText(accountnameTextView));
@@ -447,10 +455,13 @@ public class AccountConfigurationActivity extends AccountAuthenticatorActivity i
         // leaves us with a zero sync. interval.
 
         ShowCheckingPage();
+        // Not execute(): AsyncTask's default executor is serial, so a login that has to wait for a
+        // server timeout would block the next login until it finishes. Each login is independent,
+        // so they may run concurrently on the pooled executor.
         new LoginThread(
                 ImapNotesAccount,
                 this,
-                action).execute();
+                action).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     public boolean onCreateOptionsMenu(Menu menu) {

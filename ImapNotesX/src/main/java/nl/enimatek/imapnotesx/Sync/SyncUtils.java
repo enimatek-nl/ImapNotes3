@@ -83,6 +83,15 @@ import nl.enimatek.imapnotesx.Miscs.Utilities;
 public class SyncUtils {
 
     private static final String TAG = "IN_SyncUtils";
+    /**
+     * JavaMail timeouts in milliseconds. They are protocol specific, so they have to be set for the
+     * protocol that is really used (see ConnectToRemote): "mail.imap.*" does not apply to an imaps
+     * store. Only {@code connectiontimeout} bounds the TCP connect; {@code timeout} bounds every
+     * read from the socket and is what stops a login from hanging forever when a server accepts the
+     * connection but never sends the IMAP greeting.
+     */
+    private static final String CONNECTION_TIMEOUT_MILLIS = "10000";
+    private static final String SOCKET_READ_TIMEOUT_MILLIS = "30000";
     private final Object myLock = new Object();
     // TODO: Why do we have two folder fields and why are they both nullable?
     private Store store;
@@ -313,7 +322,8 @@ public class SyncUtils {
         if (proto.equals("imaps")) {
             props.put("mail.imaps.socketFactory", sf);
         }
-        props.setProperty("mail.imap.connectiontimeout", "1000");
+        props.setProperty(String.format("mail.%s.connectiontimeout", proto), CONNECTION_TIMEOUT_MILLIS);
+        props.setProperty(String.format("mail.%s.timeout", proto), SOCKET_READ_TIMEOUT_MILLIS);
 
         /*
         TODO: use user defined proxy.
@@ -441,13 +451,17 @@ public class SyncUtils {
             Log.e(TAG, "subject2title failed", e);
         }
 
-        // Get INTERNALDATE
-        String internaldate = Utilities.internalDateFormatString;
+        // Get INTERNALDATE.  A note without a (parseable) received date still needs a
+        // usable one, so fall back to "now"; storing the format pattern as a value would
+        // poison the database row.
+        String internaldate;
         try {
             Date MessageInternaldate = notesMessage.getReceivedDate();
+            if (MessageInternaldate == null) MessageInternaldate = new Date();
             internaldate = Utilities.internalDateFormat.format(MessageInternaldate);
         } catch (Exception e) {
             Log.e(TAG, "getReceivedDate failed", e);
+            internaldate = Utilities.internalDateFormat.format(new Date());
         }
 
         if (title == null)
@@ -468,7 +482,8 @@ public class SyncUtils {
 
     synchronized boolean handleRemoteNotes(@NonNull File rootFolderAccount,
                                            @NonNull NotesDb storedNotes,
-                                           @NonNull String accountName)
+                                           @NonNull String accountName,
+                                           @NonNull Set<String> justUploaded)
             throws MessagingException, IOException {
         assert remoteIMAPNotesFolder != null;
         Log.d(TAG, "handleRemoteNotes: " + remoteIMAPNotesFolder.getFullName() + " " + accountName);
@@ -549,6 +564,12 @@ public class SyncUtils {
 
         // Remove from local device, notes removed from remote
         for (String suid : localListOfNotes) {
+            if (justUploaded.contains(suid)) {
+                // The server itself handed out this uid when the note was uploaded during this
+                // very sync; a listing that does not contain it (yet) is stale, not a remote
+                // deletion.  Deleting here would eat the note the user has just added.
+                continue;
+            }
             Long uid = Long.valueOf(suid);
             if (!(uids.contains(uid))) {
                 // Remove note from database

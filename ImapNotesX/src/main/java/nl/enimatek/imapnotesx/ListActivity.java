@@ -475,8 +475,9 @@ public class ListActivity extends AppCompatActivity implements BackupRestore.INo
 
     /**
      * Asks before a note is deleted, and then uses the same delete path as the button of the editor.
-     * A Snackbar with Undo is not offered: deleting moves the local mail file to the deleted
-     * directory and updates the database, which cannot simply be rolled back.
+     * Deletion is final by design: destructive actions here are confirmed up front, not undone
+     * afterwards, and by the time a user could react the local mail file has already moved to the
+     * deleted directory and the database has been updated.
      */
     private void ConfirmAndDeleteNote(@NonNull OneNote note) {
         Log.d(TAG, "ConfirmAndDeleteNote: " + note.GetUid() + " " + note.GetAccount());

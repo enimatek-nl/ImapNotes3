@@ -37,6 +37,9 @@ def imap_quoted(value):
     if value is None:
         return b"NIL"
     raw = value.encode("utf-8") if isinstance(value, str) else value
+    # a quoted string may not contain CR or LF; an unfolded Subject header would,
+    # and JavaMail's ENVELOPE parser then aborts the whole response
+    raw = raw.replace(b"\r\n", b" ").replace(b"\n", b" ").replace(b"\r", b" ")
     return b'"' + raw.replace(b"\\", b"\\\\").replace(b'"', b'\\"') + b'"'
 
 
@@ -645,6 +648,13 @@ class Session(threading.Thread):
         literal = self.read_bytes(size)
         box.add(literal, flags=flags)
         self.store.save()
+        # RFC 3501 7.5.4: appending to the currently selected mailbox MUST be
+        # announced with an untagged EXISTS.  Without it a client like JavaMail
+        # keeps the message count it cached at SELECT time, and the next UID FETCH
+        # on the same connection never sees the freshly appended note.
+        if self.selected is box:
+            self.untagged("%d EXISTS" % len(box.messages))
+            self.untagged("0 RECENT")
         self.done(
             tag,
             code=(
