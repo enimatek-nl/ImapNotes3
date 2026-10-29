@@ -21,7 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Data;
+package nl.enimatek.imapnotesx.Data;
 
 import android.annotation.SuppressLint;
 
@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.R;
 
 /**
  * Created by kj on 11/1/16.

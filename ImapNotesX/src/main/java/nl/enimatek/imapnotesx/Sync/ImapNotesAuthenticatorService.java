@@ -18,9 +18,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package de.niendo.ImapNotes3.Sync;
+package nl.enimatek.imapnotesx.Sync;
 
-import de.niendo.ImapNotes3.AccountConfigurationActivity;
+import nl.enimatek.imapnotesx.AccountConfigurationActivity;
 
 import android.accounts.AbstractAccountAuthenticator;
 import android.accounts.Account;

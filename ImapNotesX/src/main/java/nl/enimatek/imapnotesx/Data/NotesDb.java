@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Data;
+package nl.enimatek.imapnotesx.Data;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -37,7 +37,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import de.niendo.ImapNotes3.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
 
 public class NotesDb extends SQLiteOpenHelper {
 

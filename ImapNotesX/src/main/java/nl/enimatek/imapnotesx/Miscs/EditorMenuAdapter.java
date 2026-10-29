@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -29,8 +29,8 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 
-import de.niendo.ImapNotes3.NoteDetailActivity;
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.NoteDetailActivity;
+import nl.enimatek.imapnotesx.R;
 
 public class EditorMenuAdapter extends ArrayAdapter<String> {
     @NonNull

@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 /**
  * Simple class to allow functions to return a value and a status as a single object.

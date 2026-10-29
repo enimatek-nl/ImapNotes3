@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.text.Html;
 import android.text.Spannable;
@@ -27,7 +27,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import de.niendo.ImapNotes3.Data.OneNote;
+import nl.enimatek.imapnotesx.Data.OneNote;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

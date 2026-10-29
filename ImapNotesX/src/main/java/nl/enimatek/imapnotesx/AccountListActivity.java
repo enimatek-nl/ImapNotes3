@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -39,9 +39,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import de.niendo.ImapNotes3.Data.ImapNotesAccount;
-import de.niendo.ImapNotes3.Miscs.SwipeRevealRow;
-import de.niendo.ImapNotes3.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Data.ImapNotesAccount;
+import nl.enimatek.imapnotesx.Miscs.SwipeRevealRow;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;

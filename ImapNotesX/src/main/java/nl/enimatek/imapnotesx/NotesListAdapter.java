@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import android.content.Context;
 import android.net.Uri;
@@ -40,12 +40,12 @@ import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
-import de.niendo.ImapNotes3.Data.NotesDb;
-import de.niendo.ImapNotes3.Data.OneNote;
-import de.niendo.ImapNotes3.Miscs.HtmlNote;
-import de.niendo.ImapNotes3.Miscs.SwipeRevealRow;
-import de.niendo.ImapNotes3.Miscs.Utilities;
-import de.niendo.ImapNotes3.Sync.SyncUtils;
+import nl.enimatek.imapnotesx.Data.NotesDb;
+import nl.enimatek.imapnotesx.Data.OneNote;
+import nl.enimatek.imapnotesx.Miscs.HtmlNote;
+import nl.enimatek.imapnotesx.Miscs.SwipeRevealRow;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Sync.SyncUtils;
 
 import java.io.File;
 import java.util.ArrayList;

@@ -23,7 +23,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -60,16 +60,16 @@ import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ListView;
 
-import de.niendo.ImapNotes3.Data.NotesDb;
-import de.niendo.ImapNotes3.Data.OneNote;
-import de.niendo.ImapNotes3.Miscs.BackupRestore;
-import de.niendo.ImapNotes3.Miscs.HtmlNote;
-import de.niendo.ImapNotes3.Miscs.SwipeRevealRow;
-import de.niendo.ImapNotes3.Miscs.SyncThread;
-import de.niendo.ImapNotes3.Miscs.UpdateThread;
-import de.niendo.ImapNotes3.Miscs.Utilities;
-import de.niendo.ImapNotes3.Miscs.ZipUtils;
-import de.niendo.ImapNotes3.Sync.SyncUtils;
+import nl.enimatek.imapnotesx.Data.NotesDb;
+import nl.enimatek.imapnotesx.Data.OneNote;
+import nl.enimatek.imapnotesx.Miscs.BackupRestore;
+import nl.enimatek.imapnotesx.Miscs.HtmlNote;
+import nl.enimatek.imapnotesx.Miscs.SwipeRevealRow;
+import nl.enimatek.imapnotesx.Miscs.SyncThread;
+import nl.enimatek.imapnotesx.Miscs.UpdateThread;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Miscs.ZipUtils;
+import nl.enimatek.imapnotesx.Sync.SyncUtils;
 import eltos.simpledialogfragment.SimpleDialog;
 import eltos.simpledialogfragment.list.SimpleListDialog;
 import org.woheller69.freeDroidWarn.FreeDroidWarn;

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -30,9 +30,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
-import de.niendo.ImapNotes3.BuildConfig;
-import de.niendo.ImapNotes3.Data.NotesDb;
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.BuildConfig;
+import nl.enimatek.imapnotesx.Data.NotesDb;
+import nl.enimatek.imapnotesx.R;
 
 public class AboutDialogFragment extends DialogFragment {
 

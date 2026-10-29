@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -32,16 +32,16 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import de.niendo.ImapNotes3.AccountConfigurationActivity;
-import de.niendo.ImapNotes3.Data.ConfigurationFieldNames;
-import de.niendo.ImapNotes3.Data.ImapNotesAccount;
-import de.niendo.ImapNotes3.R;
-import de.niendo.ImapNotes3.Sync.SyncUtils;
+import nl.enimatek.imapnotesx.AccountConfigurationActivity;
+import nl.enimatek.imapnotesx.Data.ConfigurationFieldNames;
+import nl.enimatek.imapnotesx.Data.ImapNotesAccount;
+import nl.enimatek.imapnotesx.R;
+import nl.enimatek.imapnotesx.Sync.SyncUtils;
 
 public class LoginThread extends AsyncTask<Void, Void, Result<String>> {
     private static final String TAG = "LoginThread";
     private static final int THREAD_ID = 0xF00D;
-    private final de.niendo.ImapNotes3.Data.ImapNotesAccount ImapNotesAccount;
+    private final nl.enimatek.imapnotesx.Data.ImapNotesAccount ImapNotesAccount;
 
     private final AccountConfigurationActivity accountConfigurationActivity;
 

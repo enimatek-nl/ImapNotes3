@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Sync;
+package nl.enimatek.imapnotesx.Sync;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;

@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.content.Context;
 import android.os.AsyncTask;
@@ -27,9 +27,9 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import de.niendo.ImapNotes3.Data.NotesDb;
-import de.niendo.ImapNotes3.Data.OneNote;
-import de.niendo.ImapNotes3.NotesListAdapter;
+import nl.enimatek.imapnotesx.Data.NotesDb;
+import nl.enimatek.imapnotesx.Data.OneNote;
+import nl.enimatek.imapnotesx.NotesListAdapter;
 
 import java.util.ArrayList;
 

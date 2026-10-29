@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -34,8 +34,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import de.niendo.ImapNotes3.Miscs.AboutDialogFragment;
-import de.niendo.ImapNotes3.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Miscs.AboutDialogFragment;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
 import eltos.simpledialogfragment.SimpleDialog;
 import eltos.simpledialogfragment.color.SimpleColorDialog;
 

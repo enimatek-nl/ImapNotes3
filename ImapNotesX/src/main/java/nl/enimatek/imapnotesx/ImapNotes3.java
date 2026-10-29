@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import static android.os.Environment.DIRECTORY_DOCUMENTS;
 

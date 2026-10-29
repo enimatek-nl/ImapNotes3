@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.app.Activity;
 import android.content.Context;
@@ -43,7 +43,7 @@ import java.util.zip.ZipOutputStream;
 import android.Manifest;
 import android.util.Log;
 
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.R;
 
 public class ZipUtils {
 

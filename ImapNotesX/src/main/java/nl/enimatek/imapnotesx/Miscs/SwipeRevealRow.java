@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -30,7 +30,7 @@ import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.R;
 
 import java.lang.ref.WeakReference;
 

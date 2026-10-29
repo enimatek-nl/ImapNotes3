@@ -21,7 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Sync;
+package nl.enimatek.imapnotesx.Sync;
 
 import android.accounts.Account;
 import android.content.Context;
@@ -34,13 +34,13 @@ import android.net.TrafficStats;
 import android.os.SystemClock;
 import android.util.Log;
 
-import de.niendo.ImapNotes3.Data.NotesDb;
-import de.niendo.ImapNotes3.Data.OneNote;
-import de.niendo.ImapNotes3.Data.Security;
-import de.niendo.ImapNotes3.ImapNotes3;
-import de.niendo.ImapNotes3.ListActivity;
-import de.niendo.ImapNotes3.Miscs.HtmlNote;
-import de.niendo.ImapNotes3.Miscs.ImapNotesResult;
+import nl.enimatek.imapnotesx.Data.NotesDb;
+import nl.enimatek.imapnotesx.Data.OneNote;
+import nl.enimatek.imapnotesx.Data.Security;
+import nl.enimatek.imapnotesx.ImapNotes3;
+import nl.enimatek.imapnotesx.ListActivity;
+import nl.enimatek.imapnotesx.Miscs.HtmlNote;
+import nl.enimatek.imapnotesx.Miscs.ImapNotesResult;
 
 import org.apache.commons.io.FileUtils;
 
@@ -77,7 +77,7 @@ import javax.mail.Store;
 import javax.mail.UIDFolder;
 import javax.mail.internet.MimeMessage;
 
-import de.niendo.ImapNotes3.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
 
 
 public class SyncUtils {

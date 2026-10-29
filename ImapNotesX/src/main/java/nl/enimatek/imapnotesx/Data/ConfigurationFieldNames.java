@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Data;
+package nl.enimatek.imapnotesx.Data;
 
 public final class ConfigurationFieldNames {
     public static final String UserName = "username";

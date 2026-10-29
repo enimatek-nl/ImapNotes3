@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import android.accounts.Account;
 import android.accounts.AccountAuthenticatorActivity;
@@ -61,14 +61,14 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import de.niendo.ImapNotes3.Data.ConfigurationFieldNames;
-import de.niendo.ImapNotes3.Data.ImapNotesAccount;
-import de.niendo.ImapNotes3.Data.Security;
-import de.niendo.ImapNotes3.Data.SyncInterval;
-import de.niendo.ImapNotes3.Miscs.LoginThread;
-import de.niendo.ImapNotes3.Miscs.Result;
-import de.niendo.ImapNotes3.Miscs.SmtpServerNameFinder;
-import de.niendo.ImapNotes3.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Data.ConfigurationFieldNames;
+import nl.enimatek.imapnotesx.Data.ImapNotesAccount;
+import nl.enimatek.imapnotesx.Data.Security;
+import nl.enimatek.imapnotesx.Data.SyncInterval;
+import nl.enimatek.imapnotesx.Miscs.LoginThread;
+import nl.enimatek.imapnotesx.Miscs.Result;
+import nl.enimatek.imapnotesx.Miscs.SmtpServerNameFinder;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
 import eltos.simpledialogfragment.SimpleDialog;
 
 import java.util.List;

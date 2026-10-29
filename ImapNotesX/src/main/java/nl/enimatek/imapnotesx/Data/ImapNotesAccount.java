@@ -21,7 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3.Data;
+package nl.enimatek.imapnotesx.Data;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
@@ -37,7 +37,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.IOException;
 
-import de.niendo.ImapNotes3.ImapNotes3;
+import nl.enimatek.imapnotesx.ImapNotes3;
 
 public class ImapNotesAccount {
 

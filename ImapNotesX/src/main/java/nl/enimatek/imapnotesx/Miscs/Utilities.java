@@ -19,7 +19,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package de.niendo.ImapNotes3.Miscs;
+package nl.enimatek.imapnotesx.Miscs;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -39,8 +39,8 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import de.niendo.ImapNotes3.BuildConfig;
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.BuildConfig;
+import nl.enimatek.imapnotesx.R;
 
 /**
  * <p>

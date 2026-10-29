@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package de.niendo.ImapNotes3.Data;
+package nl.enimatek.imapnotesx.Data;
 
 import android.annotation.SuppressLint;
 import android.content.res.Resources;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import de.niendo.ImapNotes3.R;
+import nl.enimatek.imapnotesx.R;
 
 
 public enum SyncInterval {

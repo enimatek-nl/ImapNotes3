@@ -22,7 +22,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.niendo.ImapNotes3;
+package nl.enimatek.imapnotesx;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -57,13 +57,13 @@ import java.util.List;
 
 import javax.mail.Message;
 
-import de.niendo.ImapNotes3.Data.NotesDb;
-import de.niendo.ImapNotes3.Data.OneNote;
-import de.niendo.ImapNotes3.Miscs.EditorMenuAdapter;
-import de.niendo.ImapNotes3.Miscs.HtmlNote;
-import de.niendo.ImapNotes3.Miscs.NDSpinner;
-import de.niendo.ImapNotes3.Miscs.Utilities;
-import de.niendo.ImapNotes3.Sync.SyncUtils;
+import nl.enimatek.imapnotesx.Data.NotesDb;
+import nl.enimatek.imapnotesx.Data.OneNote;
+import nl.enimatek.imapnotesx.Miscs.EditorMenuAdapter;
+import nl.enimatek.imapnotesx.Miscs.HtmlNote;
+import nl.enimatek.imapnotesx.Miscs.NDSpinner;
+import nl.enimatek.imapnotesx.Miscs.Utilities;
+import nl.enimatek.imapnotesx.Sync.SyncUtils;
 import eltos.simpledialogfragment.SimpleDialog;
 import eltos.simpledialogfragment.color.SimpleColorDialog;
 import eltos.simpledialogfragment.form.Check;
