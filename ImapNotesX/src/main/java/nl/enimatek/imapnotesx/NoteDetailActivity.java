@@ -280,6 +280,16 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
      * firing it (the fork's rich_editor.js has those RE.callback("input") calls
      * commented out). Watch the editor node with a MutationObserver and reuse
      * the fork's own event channel, so saveChangesDialog() also sees those edits.
+     *
+     * The app's own bookkeeping must not count as a change:
+     * - attribute changes on the editor root (height, padding, background via
+     *   "style", placeholder text/"placeholder" class) are Java-driven,
+     * - loading the note is RE.setHtml() replacing innerHTML; wrap it and drop
+     *   the queued records, otherwise opening a note marks it dirty. RichEditor
+     *   defers setHtml() with postDelayed() until the page is ready, so it can
+     *   run after this observer was installed (install first and the records are
+     *   dropped here; setHtml first and a not-yet-installed observer never
+     *   sees it - either order ends up clean).
      */
     private void enableUnsavedChangesWatcher() {
         editText.evaluateJavascript(
@@ -288,14 +298,18 @@ public class NoteDetailActivity extends AppCompatActivity implements AdapterView
                         + "window.IN_dirtyObserver = new MutationObserver(function(ms){"
                         + "for (var i = 0; i < ms.length; i++) {"
                         + "var r = ms[i];"
-                        // the Java side re-applies RE.setHeight (a style attribute on the
-                        // editor itself) whenever the keyboard opens/closes; that is not a
-                        // user edit
-                        + "if (r.type === 'attributes' && r.target === RE.editor && r.attributeName === 'style') continue;"
+                        // attribute changes on the editor root are app bookkeeping,
+                        // never a user edit
+                        + "if (r.type === 'attributes' && r.target === RE.editor) continue;"
                         + "RE.callback('input'); break;"
                         + "}});"
                         + "window.IN_dirtyObserver.observe(RE.editor, "
                         + "{childList:true, subtree:true, characterData:true, attributes:true});"
+                        + "var origSetHtml = RE.setHtml;"
+                        + "RE.setHtml = function(c) {"
+                        + "origSetHtml(c);"
+                        + "window.IN_dirtyObserver.takeRecords();"
+                        + "};"
                         + "})();",
                 null);
     }

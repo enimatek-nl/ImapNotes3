@@ -6,6 +6,7 @@ Development helper: used to set up the emulator for screenshots.  Run with
     adb -s emulator-5554 shell pm clear nl.enimatek.imapnotesx
     python3 scripts/dev_setup_account.py
 """
+
 import os
 import re
 import subprocess
@@ -14,16 +15,28 @@ import time
 
 PKG = "nl.enimatek.imapnotesx"
 ACTIVITY = "nl.enimatek.imapnotesx.AccountListActivity"
-APK = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                   "ImapNotesX", "build", "outputs", "apk", "debug",
-                   "ImapNotesX-v1.5-01-debug.apk")
-FIELDS = [                                    # (resource id, text to type)
+APK_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "ImapNotesX",
+    "build",
+    "outputs",
+    "apk",
+    "debug",
+)
+APK = os.path.join(APK_DIR, "ImapNotesX-debug.apk")
+_matches = sorted(
+    (f for f in os.listdir(APK_DIR) if f.endswith("-debug.apk")),
+    key=lambda f: os.path.getmtime(os.path.join(APK_DIR, f)),
+)
+if _matches:  # newest debug build, versionName varies
+    APK = os.path.join(APK_DIR, _matches[-1])
+FIELDS = [  # (resource id, text to type)
     ("accountnameEdit", "My Notes"),
     ("usernameEdit", "notes"),
     ("passwordEdit", "notes"),
     ("serverEdit", "10.0.2.2"),
-    ("securitySpinner", None),                 # first entry = no encryption
-    ("portnumEdit", "1143"),                   # typed after security: it sets the port
+    ("securitySpinner", None),  # first entry = no encryption
+    ("portnumEdit", "1143"),  # typed after security: it sets the port
 ]
 
 
@@ -31,17 +44,23 @@ def adb(*args, binary=False):
     cmd = ["adb", "-s", "emulator-5554"] + list(args)
     out = subprocess.run(cmd, capture_output=True)
     if out.returncode:
-        sys.exit("adb failed: %s\n%s" % (" ".join(cmd), out.stderr.decode(errors="replace")))
+        sys.exit(
+            "adb failed: %s\n%s" % (" ".join(cmd), out.stderr.decode(errors="replace"))
+        )
     return out.stdout if binary else out.stdout.decode(errors="replace")
 
 
 def dump():
     """A fresh uiautomator dump.  The dump fails while the screen animates, so retry."""
     path = "/sdcard/window_dump.xml"
-    subprocess.run(["adb", "-s", "emulator-5554", "shell", "rm", "-f", path], capture_output=True)
+    subprocess.run(
+        ["adb", "-s", "emulator-5554", "shell", "rm", "-f", path], capture_output=True
+    )
     for _ in range(8):
-        out = subprocess.run(["adb", "-s", "emulator-5554", "shell", "uiautomator", "dump", path],
-                             capture_output=True)
+        out = subprocess.run(
+            ["adb", "-s", "emulator-5554", "shell", "uiautomator", "dump", path],
+            capture_output=True,
+        )
         if b"dumped to" in out.stdout:
             break
         time.sleep(0.6)
@@ -56,8 +75,13 @@ def find(needle, xml=None):
     xml = xml if xml is not None else dump()
     for line in nodes(xml):
         attrs = dict(re.findall(r'([\w:.-]+)="([^"]*)"', line))
-        hay = " ".join([attrs.get("resource-id", ""), attrs.get("text", ""),
-                        attrs.get("content-desc", "")])
+        hay = " ".join(
+            [
+                attrs.get("resource-id", ""),
+                attrs.get("text", ""),
+                attrs.get("content-desc", ""),
+            ]
+        )
         if needle.lower() in hay.lower():
             return line, attrs
     return None, None
@@ -98,6 +122,18 @@ def wait_for(needle, timeout=20.0):
     return None
 
 
+def scroll_form_down():
+    """Scroll the account form up (content moves down) to reveal fields below the fold."""
+    adb("shell", "input", "swipe", "540", "1700", "540", "700", "400")
+    time.sleep(0.8)
+
+
+def dismiss_keyboard():
+    """Close the soft keyboard, which otherwise hides the bottom of the form."""
+    adb("shell", "input", "keyevent", "KEYCODE_BACK")
+    time.sleep(0.8)
+
+
 def swipe_row(left=950, right=140):
     _, attrs = find("rowContent")
     if not attrs:
@@ -112,10 +148,19 @@ def pick_spinner_option(anchor, wanted):
     """Tap the dropdown entry of `anchor` whose text is `wanted` (case-insensitive)."""
     for line in nodes(dump()):
         attrs = dict(re.findall(r'([\w:.-]+)="([^"]*)"', line))
-        if attrs.get("text", "").strip().lower() == wanted.lower() and \
-                attrs.get("class", "").endswith("TextView"):
-            left, top, right, bottom = (int(v) for v in re.findall(r"-?\d+", attrs["bounds"]))
-            adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+        if attrs.get("text", "").strip().lower() == wanted.lower() and attrs.get(
+            "class", ""
+        ).endswith("TextView"):
+            left, top, right, bottom = (
+                int(v) for v in re.findall(r"-?\d+", attrs["bounds"])
+            )
+            adb(
+                "shell",
+                "input",
+                "tap",
+                str((left + right) // 2),
+                str((top + bottom) // 2),
+            )
             return attrs["text"]
     return None
 
@@ -149,11 +194,11 @@ def wipe():
         swipe_row()
         time.sleep(0.8)
         if not find("deleteAccountRowButton")[1]:
-            swipe_row(1000, 120)          # try again, slower
+            swipe_row(1000, 120)  # try again, slower
             time.sleep(0.8)
         tap("deleteAccountRowButton")
         time.sleep(1.0)
-        dismiss_dialog()                  # the confirmation dialog offers YES / NO
+        dismiss_dialog()  # the confirmation dialog offers YES / NO
         end = time.time() + 12
         while time.time() < end and find("accountName")[1]:
             time.sleep(0.6)
@@ -170,9 +215,15 @@ def create_account(name):
         if res_id in ("securitySpinner", "portnumEdit"):
             # both live in the collapsible "more settings" section
             if not find("portnumEdit")[1]:
-                tap("BtnExpandAccountSettings")
-                if not wait_for("portnumEdit", timeout=6):
-                    sys.exit("the extended account settings did not open")
+                # a focused text field raises the soft keyboard, which hides the
+                # lower part of the form from uiautomator entirely
+                dismiss_keyboard()
+                if not find("portnumEdit")[1]:
+                    tap("BtnExpandAccountSettings")
+                    if not wait_for("portnumEdit", timeout=6):
+                        scroll_form_down()
+                        if not wait_for("portnumEdit", timeout=6):
+                            sys.exit("the extended account settings did not open")
         if res_id == "securitySpinner":
             tap("securitySpinner")
             time.sleep(1.0)
@@ -184,6 +235,9 @@ def create_account(name):
             continue
         set_field(res_id, value)
         time.sleep(0.2)
+    dismiss_keyboard()
+    if not wait_for("next", timeout=3):  # the button can be clipped at the fold
+        scroll_form_down()
     tap("Next")
     attrs = wait_for("Account has been added", timeout=25)
     print("result:", attrs.get("text") if attrs else "TIMEOUT")
@@ -203,8 +257,11 @@ def alert_present():
     for line in nodes(dump()):
         attrs = dict(re.findall(r'([\w:.-]+)="([^"]*)"', line))
         res = attrs.get("resource-id", "")
-        if res.endswith("/alertTitle") or res.endswith("/message") or \
-                attrs.get("class", "").endswith("AlertDialog"):
+        if (
+            res.endswith("/alertTitle")
+            or res.endswith("/message")
+            or attrs.get("class", "").endswith("AlertDialog")
+        ):
             return True
     return False
 
@@ -216,10 +273,20 @@ def dismiss_dialog():
     for label in ("button1", "OK", "I understand", "I UNDERSTAND"):
         for line in nodes(dump()):
             attrs = dict(re.findall(r'([\w:.-]+)="([^"]*)"', line))
-            if attrs.get("resource-id", "").endswith("/" + label) or \
-                    attrs.get("text", "").strip().upper() == label.upper():
-                left, top, right, bottom = (int(v) for v in re.findall(r"-?\d+", attrs["bounds"]))
-                adb("shell", "input", "tap", str((left + right) // 2), str((top + bottom) // 2))
+            if (
+                attrs.get("resource-id", "").endswith("/" + label)
+                or attrs.get("text", "").strip().upper() == label.upper()
+            ):
+                left, top, right, bottom = (
+                    int(v) for v in re.findall(r"-?\d+", attrs["bounds"])
+                )
+                adb(
+                    "shell",
+                    "input",
+                    "tap",
+                    str((left + right) // 2),
+                    str((top + bottom) // 2),
+                )
                 time.sleep(1.2)
                 return True
     return False
@@ -232,7 +299,7 @@ def open_first_account():
     tap("rowContent")
     for _ in range(4):
         time.sleep(1.5)
-        dismiss_dialog()                  # e.g. the free-SDK warning on first start
+        dismiss_dialog()  # e.g. the free-SDK warning on first start
     if not wait_for("noteTitle", timeout=60):
         sys.exit("no notes arrived from the mock server")
     time.sleep(1.0)
@@ -241,8 +308,12 @@ def open_first_account():
 def reinstall(apk):
     """Uninstall and install again - that also drops stray AccountManager accounts."""
     adb("shell", "am", "force-stop", PKG)
-    adb("uninstall", PKG)
-    out = subprocess.run(["adb", "-s", "emulator-5554", "install", "-g", apk], capture_output=True)
+    subprocess.run(  # already-uninstalled is fine
+        ["adb", "-s", "emulator-5554", "uninstall", PKG], capture_output=True
+    )
+    out = subprocess.run(
+        ["adb", "-s", "emulator-5554", "install", "-g", apk], capture_output=True
+    )
     if b"Success" not in out.stdout:
         sys.exit("install failed: %s" % out.stdout.decode(errors="replace"))
 
@@ -262,7 +333,9 @@ def main():
                 time.sleep(1.0)
         if not wait_for("addAccountButton", timeout=10):
             sys.exit("no account screen: " + dump()[:400])
-    names = [sys.argv[i + 1] for i, v in enumerate(sys.argv) if v == "--name"] or ["My Notes"]
+    names = [sys.argv[i + 1] for i, v in enumerate(sys.argv) if v == "--name"] or [
+        "My Notes"
+    ]
     for name in names:
         create_account(name)
         go_home()
